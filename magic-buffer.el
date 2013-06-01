@@ -209,8 +209,7 @@ Curabitur vulputate vestibulum lorem"))
 (mb-section "Utf-8 tables"
   "Some fonts don't support box characters (A way to find out whether a font
 supports a character could be useful). Spaces might appear between characters,
-especially with smaller font sizes. Despite the apparent innocence of the code,
-it causes issues with mouse positioning, while the tables are being displayed.
+especially with smaller font sizes.
 
 Unicode box charactres can be found in the source code."
 
@@ -242,8 +241,8 @@ Unicode box charactres can be found in the source code."
 "
                       1)
            'face '(:height 2.0)
-           'line-height t
-           'line-spacing 0
+           ;; 'line-height t
+           ;; 'line-spacing 0
            )))
 
 ;; -----------------------------------------------------------------------------
@@ -309,6 +308,7 @@ make new ones is to use `fringe-helper'."
         (progn
           (setq truncate-lines nil)
           (setq word-wrap nil) ; Bug workaround
+          (setq line-spacing 0)
           (setq left-fringe-width 8
                 right-fringe-width 8))
         (setq revert-buffer-function 'magic-buffer)
