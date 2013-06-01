@@ -379,19 +379,19 @@ For some reason doens't work when I use my .emacs"
 
 (mb-section "Images"
   "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
-was made to improve the situation, but it makes things worse, at least in my setup."
+was made to improve the situation, but it makes things worse, at least with my setup."
   (let ((image-size (image-size `(image :type jpeg :file ,mb-expamle-image))))
     (mb-subsection-header "Simple case")
     (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]")
     (insert "\n\n")
     (mb-subsection-header "You can also crop images")
     (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]" nil
-                  '(120 50 200 300))
+                  '(60 25 100 150))
     (insert "\n\n")
     (mb-subsection-header "Or add a number of effects")
     (insert-image `(image :type jpeg :file ,mb-expamle-image :conversion disabled)
                   "[you should be seeing an image]" nil
-                  '(120 50 200 300))))
+                  '(60 25 100 150))))
 
 ;; -----------------------------------------------------------------------------
 (defun magic-buffer (&rest ignore)

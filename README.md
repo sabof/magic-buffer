@@ -1,6 +1,8 @@
 # magic-buffer
 An executable cookbook, on how to (ab)use emacse's display engine. Feel free to add sections, or suggest improvements.
 
+![screenshot](https://github.com/sabof/magic-buffer/raw/master/screenshot.png)
+
 ## Trans-network autoload
 You can add the following snippet to your .emacs. It will download and install the latest version of magic-buffer on its firsts run.
 
