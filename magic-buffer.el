@@ -96,9 +96,10 @@
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal Centering"
-  (let ((text "This paragraph will be centered in all windows. It will stay
-centered, even if the window is resized. It will brake, should the window be
-narrower than the text."))
+  "Brakes when the window be narrower than the text."
+  (let ((text "This paragraph will be centered in all windows.
+It will stay centered,
+even if the window is resized."))
     (cl-dolist (text (split-string text "\n"))
       (insert (propertize text
                           'display
@@ -122,9 +123,9 @@ narrower than the text."))
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Variable width text flushed right"
-  "Will brake should any of the lines be wider that the frame, at the moment \
+  "Won't work should any of the lines be wider that the frame, at the moment \
 of creation.
-Will also break, should the height of frame's text change."
+Will also break, should the size of frame's text change."
   (let (( paragraphs "Lorem ipsum dolor
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
@@ -166,8 +167,47 @@ Curabitur vulputate vestibulum lorem"))
         ))))
 
 ;; -----------------------------------------------------------------------------
-(mb-section "Widgets"
-  ())
+(mb-section "Utf-8 tables"
+  "Spaces might appear between characters at small font sizes.
+A table of unicode box-drawing charactres can be found in the source code."
+
+  ;; ─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏
+
+  ;; ┐ ┑ ┒ ┓ └ ┕ ┖ ┗ ┘ ┙ ┚ ┛ ├ ┝ ┞ ┟
+
+  ;; ┠ ┡ ┢ ┣ ┤ ┥ ┦ ┧ ┨ ┩ ┪ ┫ ┬ ┭ ┮ ┯
+
+  ;; ┰ ┱ ┲ ┳ ┴ ┵ ┶ ┷ ┸ ┹ ┺ ┻ ┼ ┽ ┾ ┿
+
+  ;; ╀ ╁ ╂ ╃ ╄ ╅ ╆ ╇ ╈ ╉ ╊ ╋ ╌ ╍ ╎ ╏
+
+  ;; ═ ║ ╒ ╓ ╔ ╕ ╖ ╗ ╘ ╙ ╚ ╛ ╜ ╝ ╞ ╟
+
+  ;; ╠ ╡ ╢ ╣ ╤ ╥ ╦ ╧ ╨ ╩ ╪ ╫ ╬ ╭ ╮ ╯
+
+  ;; ╰ ╱ ╲ ╳ ╴ ╵ ╶ ╷ ╸ ╹ ╺ ╻ ╼ ╽ ╾ ╿
+
+  ;; Taken from https://en.wikipedia.org/wiki/Box_Drawing_(Unicode_block)
+
+  (insert (propertize
+           (substring "
+╔══════╤══════╗ ╭──────┰──────╮
+║ text │ text ║ │ text ┃ text │
+╟──────┼──────╢ ┝━━━━━━╋━━━━━━┥
+║ text │ text ║ │ text ┃ text │
+╚══════╧══════╝ ╰──────┸──────╯
+"
+                      1)
+           'face '(:height 2.0)
+           'line-height t
+           ))
+  (insert "
+
+"))
+;; -----------------------------------------------------------------------------
+
+;; (mb-section "Widgets"
+;;   ())
 ;; -----------------------------------------------------------------------------
 
 (defun magic-buffer (&rest ignore)
@@ -187,8 +227,11 @@ Curabitur vulputate vestibulum lorem"))
           (cl-destructuring-bind (number name doc function) section
             (insert (propertize (format "%s. %s:\n" number name)
                                 'face 'info-title-3))
-            (if doc (insert (propertize (format "%s\n\n" doc)
-                                        'face 'font-lock-comment-face))
+            (if doc
+                (let ((beginning (point)))
+                  (insert (propertize (format "%s\n\n" doc)
+                                      'face 'font-lock-comment-face))
+                  (fill-region beginning (point)))
                 (insert "\n"))
             (funcall function)
             (goto-char (point-max))
