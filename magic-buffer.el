@@ -54,7 +54,8 @@
            (concat
             (file-name-directory buffer-file-name)
             "lady-with-an-ermine.jpg"))
-      (let ((file-name (make-temp-name "mb-")))
+      (let ((file-name (concat temporary-file-directory "tempelpa"
+                               "lady-with-an-ermine.jpg")))
         (with-current-buffer
             (url-retrieve-synchronously
              "https://raw.github.com/sabof/magic-buffer/master/lady-with-an-ermine.jpg")
