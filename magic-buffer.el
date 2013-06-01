@@ -311,7 +311,7 @@ make new ones is to use `fringe-helper'."
 
 (mb-section "Pointer shapes"
   "Hover with your mouse over the labels to change the poiner.
-For some reason doens't work when use my .emacs"
+For some reason doens't work when I use my .emacs"
   (insert (propertize "text"
                       'pointer 'text
                       'face '(:background "DarkBlue")) "\n")
