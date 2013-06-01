@@ -6,14 +6,15 @@ You can add the following snippet to your .emacs. It will download and install t
 
     (defun magic-buffer ()
       (interactive)
-      (with-current-buffer
+      (let ((lexical-binding t))
+        (with-current-buffer
           (url-retrieve-synchronously
            "https://raw.github.com/sabof/magic-buffer/master/magic-buffer.el")
-        (goto-char (point-min))
-        (search-forward "\n\n")
-        (delete-region (point-min) (point))
-        (setq lexical-binding t)
-        (eval-buffer))
+          (goto-char (point-min))
+          (search-forward "\n\n")
+          (delete-region (point-min) (point))
+          (setq lexical-binding t)
+          (eval-buffer)))
       (magic-buffer))
 
 then
