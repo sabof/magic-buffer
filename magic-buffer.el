@@ -30,6 +30,8 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'info) ; For title faces
+
 (defvar mb-sections nil)
 (setq mb-sections nil)
 (defvar mb-counter 1)
