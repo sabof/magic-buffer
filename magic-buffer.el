@@ -53,7 +53,7 @@
 
 (mb-section "Horizontal line"
   "The point-entered property prevents the point from staying on that location,\
-since that would change the color of the line. Under"
+since that would change the color of the line."
   (insert (propertize
            ;; (concat (make-string 999 ?\s ) "\n")
            "\n"
