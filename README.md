@@ -2,7 +2,7 @@
 An executable cookbook, on how to (ab)use emacse's display engine. Feel free to add sections, or suggest improvements.
 
 ## Trans-network autoload
-You can add the following snippet to your .emacs. It will download and install the latest version of magic-buffer on it's firsts run.
+You can add the following snippet to your .emacs. It will download and install the latest version of magic-buffer on its firsts run.
 
     (defun magic-buffer ()
       (interactive)

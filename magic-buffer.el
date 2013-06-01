@@ -37,6 +37,33 @@
 (defvar mb-counter 1)
 (setq mb-counter 1)
 
+(defvar mb-expamle-image
+  (or (and load-file-name
+           (file-exists-p
+            (concat
+             (file-name-directory load-file-name)
+             "lady-with-an-ermine.jpg"))
+           (concat
+            (file-name-directory load-file-name)
+            "lady-with-an-ermine.jpg"))
+      (and buffer-file-name
+           (file-exists-p
+            (concat
+             (file-name-directory buffer-file-name)
+             "lady-with-an-ermine.jpg"))
+           (concat
+            (file-name-directory buffer-file-name)
+            "lady-with-an-ermine.jpg"))
+      (let ((file-name (make-temp-name "mb-")))
+        (with-current-buffer
+            (url-retrieve-synchronously
+             "https://raw.github.com/sabof/magic-buffer/master/lady-with-an-ermine.jpg")
+          (goto-char (point-min))
+          (search-forward "\n\n")
+          (delete-region (point-min) (point))
+          (write-region nil nil file-name)
+          file-name))))
+
 ;;; Helpers --------------------------------------------------------------------
 
 (defun mb-diff-windows-colorize (point-a point-b window-list)
@@ -55,6 +82,13 @@
   (let ((beginning (point)))
     (insert string)
     (fill-region beginning (point))))
+
+(defun mb-subsection-header (string)
+  (insert (propertize string 'face 'info-title-4) "\n"))
+
+(defun mb-comment (string)
+  (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
+  (insert "\n"))
 
 (defface mb-diff-terminal
   '(( ((type graphic))
@@ -314,27 +348,50 @@ make new ones is to use `fringe-helper'."
 For some reason doens't work when I use my .emacs"
   (insert (propertize "text"
                       'pointer 'text
-                      'face '(:background "DarkBlue")) "\n")
-  (insert (propertize "arrow"
+                      'face '(:background "DarkBlue"))
+          "\n"
+          (propertize "arrow"
                       'pointer 'arrow
-                      'face '(:background "DarkBlue")) "\n")
-  (insert (propertize "hand"
+                      'face '(:background "DarkBlue"))
+          "\n"
+          (propertize "hand"
                       'pointer 'hand
-                      'face '(:background "DarkBlue")) "\n")
-  (insert (propertize "vdrag"
+                      'face '(:background "DarkBlue"))
+          "\n"
+          (propertize "vdrag"
                       'pointer 'vdrag
-                      'face '(:background "DarkBlue")) "\n")
-  (insert (propertize "hdrag"
+                      'face '(:background "DarkBlue"))
+          "\n"
+          (propertize "hdrag"
                       'pointer 'hdrag
-                      'face '(:background "DarkBlue")) "\n")
-  (insert (propertize "modeline"
+                      'face '(:background "DarkBlue"))
+          "\n"
+          (propertize "modeline"
                       'pointer 'modeline
-                      'face '(:background "DarkBlue")) "\n")
-  (insert (propertize "hourglass"
+                      'face '(:background "DarkBlue"))
+          "\n"
+          (propertize "hourglass"
                       'pointer 'hourglass
-                      'face '(:background "DarkBlue")) "\n")
+                      'face '(:background "DarkBlue"))
+          "\n"))
 
-  )
+;; -----------------------------------------------------------------------------
+
+(mb-section "Images"
+  "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
+was made to improve the situation, but it makes things worse, at least in my setup."
+  (let ((image-size (image-size `(image :type jpeg :file ,mb-expamle-image))))
+    (mb-subsection-header "Simple case")
+    (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]")
+    (insert "\n\n")
+    (mb-subsection-header "You can also crop images")
+    (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]" nil
+                  '(120 50 200 300))
+    (insert "\n\n")
+    (mb-subsection-header "Or add a number of effects")
+    (insert-image `(image :type jpeg :file ,mb-expamle-image :conversion disabled)
+                  "[you should be seeing an image]" nil
+                  '(120 50 200 300))))
 
 ;; -----------------------------------------------------------------------------
 (defun magic-buffer (&rest ignore)
