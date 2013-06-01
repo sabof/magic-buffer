@@ -255,7 +255,7 @@ found in the source code."
           (setq left-fringe-width 8
                 right-fringe-width 8))
         (setq revert-buffer-function 'magic-buffer)
-        (cl-dolist (section (cl-sort mb-sections '< :key 'car))
+        (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
           (cl-destructuring-bind (number name doc function) section
             (insert (propertize (format "%s. %s:\n" number name)
                                 'face 'info-title-3))
