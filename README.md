@@ -12,6 +12,7 @@ You can add the following snippet to your .emacs. It will download and install t
         (goto-char (point-min))
         (search-forward "\n\n")
         (delete-region (point-min) (point))
+        (setq lexical-binding t)
         (eval-buffer))
       (magic-buffer))
 
