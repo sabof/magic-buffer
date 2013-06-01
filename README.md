@@ -14,3 +14,7 @@ You can add the following snippet to your .emacs. It will download and install t
         (delete-region (point-min) (point))
         (eval-buffer))
       (magic-buffer))
+
+then
+
+    M-x magic-buffer

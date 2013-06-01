@@ -68,7 +68,7 @@ since that would change the color of the line. Under"
 
 (mb-section "Differentiate displays"
   (insert (propertize "This text will have a different background, depending on\
- the type of display"
+ the type of display. (Graphical, tty, \"full color\" tty)"
                       'face 'mb-test-face1)
           "\n")
   )
@@ -85,8 +85,7 @@ since that would change the color of the line. Under"
        (min-colors 88))
       (:background "green"))
 
-    ;; No-op
-    ( t (:background "black")
+    ( t (:background "gray")
         ))
   "a test face")
 
@@ -198,8 +197,9 @@ Curabitur vulputate vestibulum lorem"))
 
 ;; -----------------------------------------------------------------------------
 (mb-section "Utf-8 tables"
-  "Spaces might appear between characters at small font sizes.
-A table of unicode box-drawing charactres can be found in the source code."
+  "Spaces might appear between characters at small font sizes. Also some fonts
+don't support box characters. A table of unicode box-drawing charactres can be
+found in the source code."
 
   ;; ─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏
 
