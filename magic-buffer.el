@@ -54,7 +54,7 @@
            (concat
             (file-name-directory buffer-file-name)
             "lady-with-an-ermine.jpg"))
-      (let ((file-name (concat temporary-file-directory "tempelpa"
+      (let ((file-name (concat temporary-file-directory
                                "lady-with-an-ermine.jpg")))
         (with-current-buffer
             (url-retrieve-synchronously
@@ -62,6 +62,7 @@
           (goto-char (point-min))
           (search-forward "\n\n")
           (delete-region (point-min) (point))
+          (setq buffer-file-coding-system 'no-conversion)
           (write-region nil nil file-name)
           file-name))))
 
