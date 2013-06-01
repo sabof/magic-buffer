@@ -37,6 +37,53 @@
 (defvar mb-counter 1)
 (setq mb-counter 1)
 
+;;; Helpers --------------------------------------------------------------------
+
+(defun mb-diff-windows-colorize (point-a point-b window-list)
+  (cl-dolist (win (get-buffer-window-list nil nil t))
+    (unless (assoc win (cdr window-list))
+      (let ((ov (make-overlay point-a point-b)))
+        (setcdr window-list (cl-acons win ov (cdr window-list)))
+        (overlay-put ov 'window win)
+        (overlay-put ov 'face
+                     `(:background
+                       ,(apply 'format "#%02X%02X%02X"
+                               (mapcar 'random (make-list 3 255))))))
+      )))
+
+(defface mb-diff-terminal
+  '(( ((type graphic))
+      (:background "red"))
+
+    ( ((class color)
+       (min-colors 88))
+      (:background "blue"))
+
+    ( ((class color)
+       (min-colors 88))
+      (:background "green"))
+
+    ( t (:background "gray")
+        ))
+  "a test face")
+
+(defun mb-region-pixel-width (from to)
+  (let (( position-x
+          (lambda (pos)
+            (set-window-start nil (max (point-min) (- pos 100)))
+            (goto-char pos)
+            (car (nth 2 (posn-at-point pos)))
+            ))
+        before after)
+    (save-excursion
+      (save-window-excursion
+        (delete-other-windows)
+        (unless (eq (current-buffer) (window-buffer))
+          (set-window-buffer nil (current-buffer)))
+        (abs (- (funcall position-x from)
+                (funcall position-x to)))
+        ))))
+
 (defmacro mb-section (name &rest body)
   (declare (indent defun))
   `(let* (( cons (car (push (list (prog1 mb-counter
@@ -52,7 +99,7 @@
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal line"
-  "The point-entered property prevents the point from staying on that location,\
+  "The point-entered property prevents the point from staying on that location,
 since that would change the color of the line."
   (insert (propertize
            ;; (concat (make-string 999 ?\s ) "\n")
@@ -69,33 +116,17 @@ since that would change the color of the line."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate displays"
-  (insert (propertize "This text will have a different background, depending on\
- the type of display. (Graphical, tty, \"full color\" tty)"
-                      'face 'mb-test-face1)
+  (insert (propertize "This text will have a different background, depending on
+the type of display (Graphical, tty, \"full color\" tty)."
+                      'face 'mb-diff-terminal)
           "\n")
   )
-
-(defface mb-test-face1
-  '(( ((type graphic))
-      (:background "red"))
-
-    ( ((class color)
-       (min-colors 88))
-      (:background "blue"))
-
-    ( ((class color)
-       (min-colors 88))
-      (:background "green"))
-
-    ( t (:background "gray")
-        ))
-  "a test face")
 
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate windows"
-  (let (( text "This text will have a different background color, in each\
- window it is displayed")
+  (let (( text "This text will have a different background color, in each
+window it is displayed")
         (window-list (list 'window-list))
         point-a
         point-b)
@@ -111,18 +142,6 @@ since that would change the color of the line."
               nil t)
     (mb-diff-windows-colorize point-a point-b window-list)
     ))
-
-(defun mb-diff-windows-colorize (point-a point-b window-list)
-  (cl-dolist (win (get-buffer-window-list nil nil t))
-    (unless (assoc win (cdr window-list))
-      (let ((ov (make-overlay point-a point-b)))
-        (setcdr window-list (cl-acons win ov (cdr window-list)))
-        (overlay-put ov 'window win)
-        (overlay-put ov 'face
-                     `(:background
-                       ,(apply 'format "#%02X%02X%02X"
-                               (mapcar 'random (make-list 3 255))))))
-      )))
 
 ;; -----------------------------------------------------------------------------
 
@@ -154,9 +173,9 @@ even if the window is resized."))
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Variable width text flushed right"
-  "Won't work should any of the lines be wider that the frame, at the moment \
-of creation.
-Will also break, should the size of frame's text change."
+  "Won't work should any of the lines be wider that the frame, at the moment
+of creation. Will also break, should the size of frame's text change. There
+might be a better way to do it, using bidi text support."
   (let (( paragraphs "Lorem ipsum dolor
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
@@ -180,28 +199,14 @@ Curabitur vulputate vestibulum lorem"))
                   (insert "\n")))
     ))
 
-(defun mb-region-pixel-width (from to)
-  (let (( position-x
-          (lambda (pos)
-            (set-window-start nil (max (point-min) (- pos 100)))
-            (goto-char pos)
-            (car (nth 2 (posn-at-point pos)))
-            ))
-        before after)
-    (save-excursion
-      (save-window-excursion
-        (delete-other-windows)
-        (unless (eq (current-buffer) (window-buffer))
-          (set-window-buffer nil (current-buffer)))
-        (abs (- (funcall position-x from)
-                (funcall position-x to)))
-        ))))
-
 ;; -----------------------------------------------------------------------------
+
 (mb-section "Utf-8 tables"
-  "Spaces might appear between characters at small font sizes. Also some fonts
-don't support box characters. A table of unicode box-drawing charactres can be
-found in the source code."
+  "Some fonts don't support box characters (There might be a way to find out
+whether a font supports a character). Spaces might appear between characters at
+small font sizes. Despite the apparent innocence of the code, it causes issues
+with mouse positioning, while the tables are being displayed. Table of unicode
+box-drawing charactres can be found in the source code. "
 
   ;; ─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏
 
@@ -232,14 +237,29 @@ found in the source code."
                       1)
            'face '(:height 2.0)
            'line-height t
-           ))
-  (insert "
+           'line-spacing 0
+           )))
 
-"))
 ;; -----------------------------------------------------------------------------
 
 ;; (mb-section "Widgets"
 ;;   ())
+
+;; -----------------------------------------------------------------------------
+
+(mb-section "Quoted paragraph"
+  (let (( prefix (concat " "
+                         (propertize " "
+                                     'display '(space :width (4))
+                                     'face '(:background "DarkRed"))
+                         " "))
+        ( beginning (point)))
+    (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc porta vulputate tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Nullam tempus. Pellentesque tristique imperdiet tortor. Lorem ipsum dolor sit amet, consectetuer adipiscing elit."
+                        'wrap-prefix prefix
+                        'line-prefix prefix
+                        'face 'italic))
+    (fill-region beginning (point))))
+
 ;; -----------------------------------------------------------------------------
 
 (defun magic-buffer (&rest ignore)
@@ -251,7 +271,7 @@ found in the source code."
         (fundamental-mode)
         (progn
           (setq truncate-lines nil)
-          ;; (setq word-wrap nil) ; Bug workaround
+          (setq word-wrap nil) ; Bug workaround
           (setq left-fringe-width 8
                 right-fringe-width 8))
         (setq revert-buffer-function 'magic-buffer)
