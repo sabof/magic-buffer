@@ -51,9 +51,14 @@
                                (mapcar 'random (make-list 3 255))))))
       )))
 
+(defun mb-insert-filled (string)
+  (let ((beginning (point)))
+    (insert string)
+    (fill-region beginning (point))))
+
 (defface mb-diff-terminal
   '(( ((type graphic))
-      (:background "red"))
+      (:background "DarkRed"))
 
     ( ((class color)
        (min-colors 88))
@@ -116,16 +121,16 @@ since that would change the color of the line."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate displays"
-  (insert (propertize "This text will have a different background, depending on
-the type of display (Graphical, tty, \"full color\" tty)."
-                      'face 'mb-diff-terminal)
-          "\n")
-  )
+  (mb-insert-filled
+   (propertize "This text will have a different background, depending on \
+the type of display. (Graphical, tty, \"full color\" tty)."
+               'face 'mb-diff-terminal))
+  (insert "\n"))
 
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate windows"
-  (let (( text "This text will have a different background color, in each
+  (let (( text "This text will have a different background color, in each \
 window it is displayed")
         (window-list (list 'window-list))
         point-a
@@ -202,11 +207,12 @@ Curabitur vulputate vestibulum lorem"))
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Utf-8 tables"
-  "Some fonts don't support box characters (There might be a way to find out
-whether a font supports a character). Spaces might appear between characters at
-small font sizes. Despite the apparent innocence of the code, it causes issues
-with mouse positioning, while the tables are being displayed. Table of unicode
-box-drawing charactres can be found in the source code. "
+  "Some fonts don't support box characters (A way to find out whether a font
+supports a character could be useful). Spaces might appear between characters,
+especially with smaller font sizes. Despite the apparent innocence of the code,
+it causes issues with mouse positioning, while the tables are being displayed.
+
+Unicode box charactres can be found in the source code."
 
   ;; ─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏
 
@@ -252,13 +258,44 @@ box-drawing charactres can be found in the source code. "
                          (propertize " "
                                      'display '(space :width (4))
                                      'face '(:background "DarkRed"))
-                         " "))
-        ( beginning (point)))
-    (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc porta vulputate tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Nullam tempus. Pellentesque tristique imperdiet tortor. Lorem ipsum dolor sit amet, consectetuer adipiscing elit."
-                        'wrap-prefix prefix
-                        'line-prefix prefix
-                        'face 'italic))
-    (fill-region beginning (point))))
+                         " ")))
+    (mb-insert-filled
+     (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc
+porta vulputate tellus. Proin quam nisl, tincidunt et, mattis eget, convallis
+nec, purus. Nullam tempus. Pellentesque tristique imperdiet tortor. Lorem ipsum
+dolor sit amet, consectetuer adipiscing elit."
+                 'wrap-prefix prefix
+                 'line-prefix prefix
+                 'face 'italic))
+    ))
+
+;; -----------------------------------------------------------------------------
+
+(mb-section "Fringe indicators"
+  "fringe-indicator-alist contains the default indicators. The easiest way to
+make new ones is to use `fringe-helper'."
+  (let (( insert-fringe-bitmap
+          (lambda (symbol-name)
+            (insert (propertize " " 'display
+                                `((left-fringe ,symbol-name 'font-lock-comment-face)
+                                  (right-fringe ,symbol-name 'font-lock-comment-face)))))))
+    (cl-loop for pair in fringe-indicator-alist
+             for iter = 0 then (1+ iter)
+             do
+             (unless (zerop iter)
+               (insert "\n"))
+             (insert (propertize (concat "* " (symbol-name (car pair)))
+                                 'face 'info-title-4)
+                     "\n")
+             (if (symbolp (cdr pair))
+                 (progn
+                   (funcall insert-fringe-bitmap (cdr pair))
+                   (insert (concat "  " (symbol-name (cdr pair))) "\n"))
+                 (cl-dolist (bitmap (cdr pair))
+                   (progn
+                     (funcall insert-fringe-bitmap bitmap)
+                     (insert (concat "  " (symbol-name bitmap)) "\n"))))
+             )))
 
 ;; -----------------------------------------------------------------------------
 
@@ -275,15 +312,23 @@ box-drawing charactres can be found in the source code. "
           (setq left-fringe-width 8
                 right-fringe-width 8))
         (setq revert-buffer-function 'magic-buffer)
+        (insert (propertize "Magic buffer"
+                            'face 'info-title-2)
+                "\n")
+        (mb-insert-filled
+         (propertize "The right-align examples won't work with
+ word-wrap, so it's off. They also won't work on TTY. This can be fixed by
+ shrking the spaces by a single character."
+                     'face 'font-lock-comment-face))
+        (insert "\n\n")
         (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
           (cl-destructuring-bind (number name doc function) section
             (insert (propertize (format "%s. %s:\n" number name)
                                 'face 'info-title-3))
             (if doc
-                (let ((beginning (point)))
-                  (insert (propertize (format "%s\n\n" doc)
-                                      'face 'font-lock-comment-face))
-                  (fill-region beginning (point)))
+                (mb-insert-filled
+                 (propertize (format "%s\n\n" doc)
+                             'face 'font-lock-comment-face))
                 (insert "\n"))
             (funcall function)
             (goto-char (point-max))
