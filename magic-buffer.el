@@ -123,14 +123,14 @@ since that would change the color of the line."
 (mb-section "Differentiate displays"
   (mb-insert-filled
    (propertize "This text will have a different background, depending on \
-the type of display. (Graphical, tty, \"full color\" tty)."
+the type of display (Graphical, tty, \"full color\" tty)."
                'face 'mb-diff-terminal))
   (insert "\n"))
 
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate windows"
-  (let (( text "This text will have a different background color, in each \
+  (let (( text "This text will have a different background color in each \
 window it is displayed")
         (window-list (list 'window-list))
         point-a
@@ -206,6 +206,17 @@ Curabitur vulputate vestibulum lorem"))
 
 ;; -----------------------------------------------------------------------------
 
+(mb-section "Extra leading"
+  "The line-height propert only has effect when applied to newline characters."
+  (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+Integer placerat tristique nisl.
+Aenean in sem ac leo mollis blandit.
+Nunc eleifend leo vitae magna.
+"
+                      'line-height 1.5
+                      )))
+;; -----------------------------------------------------------------------------
+
 (mb-section "Utf-8 tables"
   "Some fonts don't support box characters (A way to find out whether a font
 supports a character could be useful). Spaces might appear between characters,
@@ -241,7 +252,7 @@ Unicode box charactres can be found in the source code."
 "
                       1)
            'face '(:height 2.0)
-           ;; 'line-height t
+           ;; 'line-height 1.0
            ;; 'line-spacing 0
            )))
 
@@ -298,6 +309,34 @@ make new ones is to use `fringe-helper'."
 
 ;; -----------------------------------------------------------------------------
 
+(mb-section "Pointer shapes"
+  "Hover with your mouse over the labels to change the poiner.
+For some reason doens't work when use my .emacs"
+  (insert (propertize "text"
+                      'pointer 'text
+                      'face '(:background "DarkBlue")) "\n")
+  (insert (propertize "arrow"
+                      'pointer 'arrow
+                      'face '(:background "DarkBlue")) "\n")
+  (insert (propertize "hand"
+                      'pointer 'hand
+                      'face '(:background "DarkBlue")) "\n")
+  (insert (propertize "vdrag"
+                      'pointer 'vdrag
+                      'face '(:background "DarkBlue")) "\n")
+  (insert (propertize "hdrag"
+                      'pointer 'hdrag
+                      'face '(:background "DarkBlue")) "\n")
+  (insert (propertize "modeline"
+                      'pointer 'modeline
+                      'face '(:background "DarkBlue")) "\n")
+  (insert (propertize "hourglass"
+                      'pointer 'hourglass
+                      'face '(:background "DarkBlue")) "\n")
+
+  )
+
+;; -----------------------------------------------------------------------------
 (defun magic-buffer (&rest ignore)
   (interactive)
   (let ((buf (get-buffer-create "*magic-buffer*")))
@@ -323,6 +362,7 @@ make new ones is to use `fringe-helper'."
         (insert "\n\n")
         (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
           (cl-destructuring-bind (number name doc function) section
+            (insert "\n\n")
             (insert (propertize (format "%s. %s:\n" number name)
                                 'face 'info-title-3))
             (if doc
