@@ -54,17 +54,13 @@
            (concat
             (file-name-directory buffer-file-name)
             "lady-with-an-ermine.jpg"))
-      (let ((file-name (concat temporary-file-directory
-                               "lady-with-an-ermine.jpg")))
-        (with-current-buffer
-            (url-retrieve-synchronously
-             "https://raw.github.com/sabof/magic-buffer/master/lady-with-an-ermine.jpg")
-          (goto-char (point-min))
-          (search-forward "\n\n")
-          (delete-region (point-min) (point))
-          (setq buffer-file-coding-system 'no-conversion)
-          (write-region nil nil file-name)
-          file-name))))
+      (let (( file-name
+              (concat temporary-file-directory
+                      "lady-with-an-ermine.jpg")))
+        (url-copy-file
+         "https://raw.github.com/sabof/magic-buffer/master/lady-with-an-ermine.jpg"
+         file-name t)
+        file-name)))
 
 ;;; Helpers --------------------------------------------------------------------
 
