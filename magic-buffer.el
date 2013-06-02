@@ -86,7 +86,7 @@
     (fill-region beginning (point))))
 
 (defun mb-subsection-header (string)
-  (insert (propertize string 'face 'info-title-4) "\n"))
+  (insert "\n" (propertize string 'face 'info-title-4) "\n\n"))
 
 (defun mb-comment (string)
   (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
@@ -136,6 +136,11 @@
                              nil)
                         (lambda ()
                           ,@body)))))
+
+(defun mb-eval-show ()
+  (interactive)
+  (eval-buffer)
+  (magic-buffer))
 
 ;; -----------------------------------------------------------------------------
 
@@ -383,21 +388,53 @@ For some reason doens't work when I use my .emacs"
 
 (mb-section "Images"
   "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
-was made to improve the situation, but it makes things worse, at least with my setup."
+was made to improve the situation, but it makes things worse on occasion."
   (let ((image-size (image-size `(image :type jpeg :file ,mb-expamle-image))))
     (mb-subsection-header "Simple case")
     (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]")
     (insert "\n\n")
-    (mb-subsection-header "You can also crop images")
+    (mb-subsection-header "Using `insert-sliced-image'")
+    (insert-sliced-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]"
+                         nil (car image-size))
+    (insert "\n")
+    (mb-subsection-header "You can also crop images, or add a number of effects")
     (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]" nil
                   '(60 25 100 150))
-    (insert "\n\n")
-    (mb-subsection-header "Or add a number of effects")
+    (insert " ")
     (insert-image `(image :type jpeg :file ,mb-expamle-image :conversion disabled)
                   "[you should be seeing an image]" nil
                   '(60 25 100 150))))
 
+(mb-section "SVG"
+  "More complex effects can be achieved through SVG"
+  (mb-subsection-header "Resizing an masking")
+  (let ((data (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"109\" height=\"150\">
+          <defs>
+          <clipPath id=\"circularPath\" clipPathUnits=\"objectBoundingBox\">
+          <circle cx=\"0.5\" cy=\"0.5\" r=\"0.5\"/>
+          </clipPath>
+          </defs>
+          <image id=\"image\" width=\"109\" height=\"150\" style=\"clip-path: url(#circularPath);\"
+          xlink:href=\"file:///media/projects/vb-shared/.emacs.d/site-lisp/my-scripts/magic-buffer/lady-with-an-ermine.jpg\" />
+          </svg>"
+                      mb-expamle-image)))
+    (insert-image `(image :type svg :data ,data)
+                  ))
+  (insert "\n\n")
+  (mb-subsection-header "Subjecting online images to multiplication and skewing")
+  (let ((data "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"400\" height=\"260\">
+  <image id=\"image\" x=\"10\" y=\"10\" width=\"100\" height=\"45\" transform=\"skewX(10)\"
+  xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
+  <image id=\"image2\" x=\"50\" y=\"35\" width=\"200\" height=\"90\" transform=\"skewX(-10)\"
+  xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
+  <image id=\"image2\" x=\"50\" y=\"100\" width=\"300\" height=\"135\" transform=\"skewX(10)\"
+  xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
+  </svg>"
+              ))
+    (insert-image `(image :type svg :data ,data))))
+
 ;; -----------------------------------------------------------------------------
+
 (defun magic-buffer (&rest ignore)
   (interactive)
   (let ((buf (get-buffer-create "*magic-buffer*")))
