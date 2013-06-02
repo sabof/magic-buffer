@@ -32,37 +32,8 @@
 (require 'cl-lib)
 (require 'info) ; For title faces
 
-(defvar mb-sections nil)
-(setq mb-sections nil)
-(defvar mb-counter 1)
-(setq mb-counter 1)
-
-(defvar mb-expamle-image
-  (or (and load-file-name
-           (file-exists-p
-            (concat
-             (file-name-directory load-file-name)
-             "lady-with-an-ermine.jpg"))
-           (concat
-            (file-name-directory load-file-name)
-            "lady-with-an-ermine.jpg"))
-      (and buffer-file-name
-           (file-exists-p
-            (concat
-             (file-name-directory buffer-file-name)
-             "lady-with-an-ermine.jpg"))
-           (concat
-            (file-name-directory buffer-file-name)
-            "lady-with-an-ermine.jpg"))
-      (let (( file-name
-              (concat temporary-file-directory
-                      "lady-with-an-ermine.jpg")))
-        (url-copy-file
-         "https://raw.github.com/sabof/magic-buffer/master/lady-with-an-ermine.jpg"
-         file-name t)
-        file-name)))
-
-;;; Helpers --------------------------------------------------------------------
+;;; Library --------------------------------------------------------------------
+;; Functions potentially useful in other contexts
 
 (defun mb-in-range (number from to)
   "Test whether a number is in FROM \(inclusive\) TO \(exclusive\) range."
@@ -117,6 +88,8 @@ the corresponding region of the buffer."
       (delete-and-extract-region from to)))))
 
 (defun mb-table-insert (string)
+  "Insert a table with UTF8 table borders, replacing them with ASCII
+fallbacks, if needed."
   (let ((start-pos (point))
         end-pos)
     (condition-case error
@@ -150,45 +123,6 @@ the corresponding region of the buffer."
   (apply 'format "#%02X%02X%02X"
          (mapcar 'random (make-list 3 255))))
 
-(defun mb-diff-windows-colorize (point-a point-b window-list)
-  (cl-dolist (win (get-buffer-window-list nil nil t))
-    (unless (assoc win (cdr window-list))
-      (let ((ov (make-overlay point-a point-b)))
-        (setcdr window-list (cl-acons win ov (cdr window-list)))
-        (overlay-put ov 'window win)
-        (overlay-put ov 'face
-                     `(:background
-                       ,(mb-random-hex-color))))
-      )))
-
-(defun mb-insert-filled (string)
-  (let ((beginning (point)))
-    (insert string)
-    (fill-region beginning (point))))
-
-(defun mb-subsection-header (string)
-  (insert "\n" (propertize string 'face 'info-title-4) "\n\n"))
-
-(defun mb-comment (string)
-  (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
-  (insert "\n"))
-
-(defface mb-diff-terminal
-  '(( ((type graphic))
-      (:background "DarkRed"))
-
-    ( ((class color)
-       (min-colors 88))
-      (:background "blue"))
-
-    ( ((class color)
-       (min-colors 88))
-      (:background "green"))
-
-    ( t (:background "gray")
-        ))
-  "a test face")
-
 (defun mb-region-pixel-width-multiple (alist)
   "Like `mb-region-pixel-width', but for multiple regions.
 Takes an ALIST of format \(\(BEGINNING . END\) ... \) as an argument,
@@ -213,6 +147,12 @@ returns a list of lengths"
                                     (funcall position-x to))))
         ))))
 
+(defun mb-region-pixel-width (from to)
+  "Find a region's pixel width.
+If you need to find widths of multiple regions, you might want to use
+ `mb-region-pixel-width-multiple', as it will be faster."
+  (car (mb-region-pixel-width-multiple (list (cons from to)))))
+
 (defun mb-flush-line-right ()
   "Works with variable width fonts."
   (save-excursion
@@ -232,11 +172,54 @@ returns a list of lengths"
                            'invisible t))
       )))
 
-(defun mb-region-pixel-width (from to)
-  "Find a region's pixel width.
-If you need to find widths of multiple regions, you might want to use
- `mb-region-pixel-width-multiple', as it will be faster."
-  (car (mb-region-pixel-width-multiple (list (cons from to)))))
+;;; Helpers --------------------------------------------------------------------
+;; Utilities that make this presentation possible
+
+(defvar mb-sections nil)
+(setq mb-sections nil)
+(defvar mb-counter 1)
+(setq mb-counter 1)
+
+(defvar mb-expamle-image
+  (or (and load-file-name
+           (file-exists-p
+            (concat
+             (file-name-directory load-file-name)
+             "lady-with-an-ermine.jpg"))
+           (concat
+            (file-name-directory load-file-name)
+            "lady-with-an-ermine.jpg"))
+      (and buffer-file-name
+           (file-exists-p
+            (concat
+             (file-name-directory buffer-file-name)
+             "lady-with-an-ermine.jpg"))
+           (concat
+            (file-name-directory buffer-file-name)
+            "lady-with-an-ermine.jpg"))
+      (let (( file-name
+              (concat temporary-file-directory
+                      "lady-with-an-ermine.jpg")))
+        (url-copy-file
+         "https://raw.github.com/sabof/magic-buffer/master/lady-with-an-ermine.jpg"
+         file-name t)
+        file-name)))
+
+(defface mb-diff-terminal
+  '(( ((type graphic))
+      (:background "DarkRed"))
+
+    ( ((class color)
+       (min-colors 88))
+      (:background "blue"))
+
+    ( ((class color)
+       (min-colors 88))
+      (:background "green"))
+
+    ( t (:background "gray")
+        ))
+  "a test face")
 
 (defmacro mb-section (name &rest body)
   (declare (indent defun))
@@ -250,22 +233,45 @@ If you need to find widths of multiple regions, you might want to use
                         (lambda ()
                           ,@body)))))
 
+(defun mb-diff-windows-colorize (point-a point-b window-list)
+  (cl-dolist (win (get-buffer-window-list nil nil t))
+    (unless (assoc win (cdr window-list))
+      (let ((ov (make-overlay point-a point-b)))
+        (setcdr window-list (cl-acons win ov (cdr window-list)))
+        (overlay-put ov 'window win)
+        (overlay-put ov 'face
+                     `(:background
+                       ,(mb-random-hex-color))))
+      )))
+
+(defun mb-insert-filled (string)
+  (let ((beginning (point)))
+    (insert string)
+    (fill-region beginning (point))))
+
+(defun mb-subsection-header (string)
+  (insert "\n" (propertize string 'face 'info-title-4) "\n\n"))
+
+(defun mb-comment (string)
+  (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
+  (insert "\n"))
+
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal line"
-  "The point-entered property prevents the point from staying on that location,
+            "The point-entered property prevents the point from staying on that location,
 since that would change the color of the line."
-  (insert (propertize
-           ;; (concat (make-string 999 ?\s ) "\n")
-           "\n"
-           'display `(space :align-to right)
-           ;; 'face '(:strike-through t)
-           'face '(:underline t)
-           'point-entered (lambda (old new)
-                            (forward-line
-                             (if (< old new) 1 -1)))
-           ))
-  (insert "\n"))
+            (insert (propertize
+                     ;; (concat (make-string 999 ?\s ) "\n")
+                     "\n"
+                     'display `(space :align-to right)
+                     ;; 'face '(:strike-through t)
+                     'face '(:underline t)
+                     'point-entered (lambda (old new)
+                                      (forward-line
+                                       (if (< old new) 1 -1)))
+                     ))
+            (insert "\n"))
 
 ;; -----------------------------------------------------------------------------
 
@@ -412,11 +418,6 @@ A table of unicode box characters can be found in the source code."
 
 ;; -----------------------------------------------------------------------------
 
-;; (mb-section "Widgets"
-;;   ())
-
-;; -----------------------------------------------------------------------------
-
 (mb-section "Quoted paragraph"
   "The red line is drawn using text-properties, so it the text can be
 copy-pasted with without extra spaces."
@@ -549,6 +550,14 @@ was made to improve the situation, but it makes things worse on occasion."
 
 ;; -----------------------------------------------------------------------------
 
+;; (mb-section "Widgets"
+;;   ())
+
+;; -----------------------------------------------------------------------------
+
+;; (mb-section "Colors")
+
+;; -----------------------------------------------------------------------------
 (defun magic-buffer (&rest ignore)
   (interactive)
   (let ((buf (get-buffer-create "*magic-buffer*")))
