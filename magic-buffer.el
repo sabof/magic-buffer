@@ -107,10 +107,11 @@
 (defun mb-region-pixel-width (from to)
   (let (( position-x
           (lambda (pos)
-            (set-window-start nil (max (point-min) (- pos 100)))
             (goto-char pos)
-            (car (nth 2 (posn-at-point pos)))
-            ))
+            (goto-char (line-beginning-position))
+            (set-window-start nil (point))
+            (goto-char pos)
+            (car (nth 2 (posn-at-point pos)))))
         before after)
     (save-excursion
       (save-window-excursion
