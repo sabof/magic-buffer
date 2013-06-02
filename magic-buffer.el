@@ -479,7 +479,7 @@ was made to improve the situation, but it makes things worse on occasion."
           (setq line-spacing 0)
           (setq left-fringe-width 8
                 right-fringe-width 8))
-        (setq revert-buffer-function 'magic-buffer)
+        (setq-local revert-buffer-function 'magic-buffer)
         (insert (propertize "Magic buffer"
                             'face 'info-title-2)
                 "\n")
