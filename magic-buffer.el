@@ -7,6 +7,13 @@
 
 ;; The project is hosted at https://github.com/sabof/magic-buffer
 ;; The latest version, and all the relevant information can be found there.
+;;
+;; Some sections have comments such as this:
+;;
+;;     (info "(elisp) Pixel Specification")
+;;
+;; If you place the cursor in the end, and press C-x C-e, it will take you to
+;; the related info page.
 
 ;;; License:
 
@@ -312,18 +319,32 @@ window it is displayed")
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Horizontal Centering"
-  "Brakes when the window be narrower than the text."
-  (let* (( text "This paragraph will be centered in all windows.
-It will stay centered,
-even if the window is re-sized.")
-         ( spec `(space :align-to (- center ,(/ (length text) 2)))))
-    (cl-dolist (text (split-string text "\n"))
-      (insert (propertize text 'display spec) text "\n"))))
+(mb-section "Aligning fixed width text"
+  "The alignment will persist on window resizing, unless the window is narrower
+ than the text."
+  ;; (info "(elisp) Pixel Specification")
+  (let* (( text-lines (split-string "Lorem ipsum dolor sit amet
+Sed bibendum
+Curabitur lacinia pulvinar nibh
+Nam euismod tellus id erat
+Sed diam
+Phasellus at dui in ligula mollis ultricies"
+                                    "\n")))
+    (mb-subsection-header "Center")
+    (cl-dolist (text text-lines)
+      (let ((spec `(space :align-to (- center ,(/ (length text) 2)))))
+        (insert  (propertize text 'line-prefix
+                             (propertize " " 'display spec))
+                 "\n")))
 
-;; -----------------------------------------------------------------------------
+    (mb-subsection-header "Right")
+    (cl-dolist (text text-lines)
+      (let ((spec `(space :align-to (- right ,(length text) (1)))))
+        (insert  (propertize text 'line-prefix
+                             (propertize " " 'display spec))
+                 "\n"))))
 
-(mb-section "Display on both sides of the window"
+  (mb-subsection-header "Display on both sides of the window")
   (let* (( text-left "LEFT --")
          ( text-right "-- RIGHT")
          ;; There is an off-by one bug. When word-wrap is enabled, the line will
@@ -338,9 +359,9 @@ even if the window is re-sized.")
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Aligning variable width text"
-  "Won't work should any of the lines be wider that the frame, at
+  "Won't work should any of the text-lines be wider that the frame, at
  the moment of creation. Will also break, should the size of
- frame's text change. Generating the text properties is slower
+ frame's text change. Generating the text properties is a lot slower
  than for fixed-width fonts. There might be a better way to do
  right alignement, using bidi text support."
   (let (( paragraphs "Lorem ipsum dolor
@@ -489,6 +510,7 @@ make new ones is to use an external package called `fringe-helper'."
 (mb-section "Pointer shapes"
   "Hover with your mouse over the labels to change the pointer.
 For some reason doesn't work when my .emacs is loaded."
+  ;; (info "(elisp) Pointer Shape")
   (insert (propertize "text"
                       'pointer 'text
                       'face '(:background "Purple"))
