@@ -133,11 +133,6 @@
                         (lambda ()
                           ,@body)))))
 
-(defun mb-eval-show ()
-  (interactive)
-  (eval-buffer)
-  (magic-buffer))
-
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal line"
@@ -279,19 +274,49 @@ Unicode box characters can be found in the source code."
 
   ;; Taken from https://en.wikipedia.org/wiki/Box_Drawing_(Unicode_block)
 
-  (insert (propertize
-           (substring "
+  (let ((string (substring "
 ╔══════╤══════╗ ╭──────┰──────╮
 ║ text │ text ║ │ text ┃ text │
 ╟──────┼──────╢ ┝━━━━━━╋━━━━━━┥
 ║ text │ text ║ │ text ┃ text │
 ╚══════╧══════╝ ╰──────┸──────╯
 "
-                      1)
-           'face '(:height 2.0)
-           ;; 'line-height 1.0
-           ;; 'line-spacing 0
-           )))
+                           1))
+        (start-pos (point))
+        end-pos)
+    (condition-case error
+        (progn
+          (cl-loop for char across string
+                   do
+                   (cl-assert (char-displayable-p char)))
+          (insert (propertize
+                   string
+                   'face '(:height
+                           2.0
+                           :family "DejaVu Sans Mono")
+                   ;; 'line-height 1.0
+                   ;; 'line-spacing 0
+                   ))
+          (setq end-pos (point))
+          (goto-char start-pos)
+          (cl-loop until (= (point) end-pos)
+                   with mono-length = (mb-region-pixel-width
+                                       (point) (1+ (point)))
+                   do (cl-assert (or (not (char-after))
+                                     (equal (char-after) ?\n )
+                                     (= (mb-region-pixel-width
+                                         (point) (1+ (point)))
+                                        mono-length)))
+                   (forward-char))
+          )
+      (error (delete-region start-pos end-pos)
+             (insert "
+|=============| /-------------\
+|  **ASCII**  | |  **ASCII**  |
+|-------------| |-------------|
+| FALL | BACK | | FALL | BACK |
+|=============| \-------------/
+")))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -322,7 +347,7 @@ dolor sit amet, consectetuer adipiscing elit."
 
 (mb-section "Fringe indicators"
   "fringe-indicator-alist contains the default indicators. The easiest way to
-make new ones is to use `fringe-helper'."
+make new ones is to use an external package called `fringe-helper'."
   (let (( insert-fringe-bitmap
           (lambda (symbol-name)
             (insert (propertize " " 'display

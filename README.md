@@ -16,7 +16,7 @@ You can add the following snippet to your .emacs. It will download and install t
                 (url-copy-file
                  "https://raw.github.com/sabof/magic-buffer/master/magic-buffer.el"
                  file-name t)
-                (load file-name))))
+                (require 'magic-buffer file-name))))
         (condition-case nil
             (funcall try-downloading)
           (error (funcall try-downloading))))
