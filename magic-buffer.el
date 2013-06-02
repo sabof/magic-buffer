@@ -64,6 +64,87 @@
 
 ;;; Helpers --------------------------------------------------------------------
 
+(defun mb-in-range (number from to)
+  (and (<= from number)
+       (< number to)))
+
+(defun mb-table-asciify-char (char)
+  "Convert UTF8 table characters to their ASCII equivalents.
+If a character is not a table character, it will be left unchanged."
+  ;; All table characters belong to the range 9472 - 9600, inclusive - exclusive
+  ;; The comment contains the first character of each range
+  (cond ( (mb-in-range char 9472 9474) ?-) ; ─
+        ( (mb-in-range char 9474 9476) ?|) ; │
+        ( (mb-in-range char 9476 9478) ?-) ; ┄
+        ( (mb-in-range char 9478 9480) ?|) ; ┆
+        ( (mb-in-range char 9480 9482) ?-) ; ┈
+        ( (mb-in-range char 9482 9484) ?|) ; ┊
+        ( (mb-in-range char 9484 9500) ?-) ; ┌
+        ( (mb-in-range char 9500 9508) ?|) ; ├
+        ( (mb-in-range char 9508 9516) ?|) ; ┤
+        ( (mb-in-range char 9516 9524) ?-) ; ┬
+        ( (mb-in-range char 9524 9532) ?-) ; ┴
+        ( (mb-in-range char 9532 9548) ?+) ; ┼
+        ( (mb-in-range char 9548 9550) ?-) ; ╌
+        ( (mb-in-range char 9550 9552) ?|) ; ╎
+        ( (member char '(?═ ?╒ ?╔ ?╕ ?╗ ?╘ ?╚ ?╛ ?╝))    ?=)
+        ( (member char '(?║ ?╓ ?╖ ?╙ ?╜))                ?-)
+        ( (member char '(?╞ ?╠ ?╡ ?╣ ?╤ ?╦ ?╧ ?╩ ?╪ ?╬)) ?=)
+        ( (member char '(?╟ ?╢ ?╥ ?╨ ?╫))                ?-)
+        ( (member char '(?╭ ?╯ ?╱))                      ?/)
+        ( (member char '(?╮ ?╰ ?╲))   (string-to-char "\\"))
+        ( (= char ?╳) ?X)
+        ( (mb-in-range char 9588 9600)
+          (if (cl-evenp char) ?- ?|))
+        ( t char)))
+
+(defun mb-table-asciify-string (string)
+  "Convert an UTF8 table to an ASCII table.
+Accepts two numeric arguments, and will replace charactres in the
+the corresponding region of the buffer."
+  (cl-loop for char across string
+           collect (or (mb-table-asciify-char char)
+                       char)
+           into char-list
+           finally return (apply 'string char-list)))
+
+(defun mb-table-asciify-region (from to)
+  (save-excursion
+    (goto-char from)
+    (insert-and-inherit
+     (mb-table-asciify-string
+      (delete-and-extract-region from to)))))
+
+(defun mb-table-insert (string)
+  (let ((start-pos (point))
+        end-pos)
+    (condition-case error
+        (progn
+          (cl-loop for char across string
+                   do
+                   (cl-assert (char-displayable-p char)))
+          (insert (propertize
+                   string
+                   'face '(:height
+                           2.0
+                           :family "DejaVu Sans Mono"
+                           )
+                   ;; 'line-height 1.0
+                   ;; 'line-spacing 0
+                   ))
+          (setq end-pos (point))
+          (goto-char start-pos)
+          (let (( regions
+                  (mb-region-pixel-width-multiple
+                   (cl-loop while (< (point) end-pos)
+                            collecting (cons (point) (line-end-position))
+                            until (cl-plusp (forward-line))))))
+            (cl-assert (cl-every (apply-partially '= (car regions))
+                                 regions)))
+          (goto-char end-pos))
+      (error (mb-table-asciify-region start-pos end-pos)
+             ))))
+
 (defun mb-diff-windows-colorize (point-a point-b window-list)
   (cl-dolist (win (get-buffer-window-list nil nil t))
     (unless (assoc win (cdr window-list))
@@ -290,48 +371,25 @@ A table of unicode box characters can be found in the source code."
 
   ;; Taken from https://en.wikipedia.org/wiki/Box_Drawing_(Unicode_block)
 
-  (let ((string (substring "
-╔══════╤══════╗ ╭──────┰──────╮
-║ text │ text ║ │ text ┃ text │
-╟──────┼──────╢ ┝━━━━━━╋━━━━━━┥
-║ text │ text ║ │ text ┃ text │
-╚══════╧══════╝ ╰──────┸──────╯"
-                           1))
-        (start-pos (point))
-        end-pos)
-    (condition-case error
-        (progn
-          (cl-loop for char across string
-                   do
-                   (cl-assert (char-displayable-p char)))
-          (insert (propertize
-                   string
-                   'face '(:height
-                           2.0
-                           ;; :family "DejaVu Sans Mono"
-                           )
-                   ;; 'line-height 1.0
-                   ;; 'line-spacing 0
-                   ))
-          (setq end-pos (point))
-          (goto-char start-pos)
-          (let (( regions
-                  (mb-region-pixel-width-multiple
-                   (cl-loop while (< (point) end-pos)
-                            collecting (cons (point) (line-end-position))
-                            until (cl-plusp (forward-line))))))
-            (cl-assert (cl-every (apply-partially '= (car regions))
-                                 regions)))
-          (goto-char end-pos))
-      (error (delete-region start-pos end-pos)
-             (insert (substring "
-|=============| /-------------\\
-|  **ASCII**  | |  **ASCII**  |
-|-------------| |-------------|
-| FALL | BACK | | FALL | BACK |
-|=============| \\-------------/
+  (let ((table1 (substring "
+╔══════╤══════╗
+║ text │ text ║
+╟──────┼──────╢
+║ text │ text ║
+╚══════╧══════╝
 "
-                                1))))))
+                           1))
+        (table2 (substring "
+╭──────┰──────╮
+│ text ┃ text │
+┝━━━━━━╋━━━━━━┥
+│ text ┃ text │
+╰──────┸──────╯
+"
+                           1)))
+    (mb-table-insert table1)
+    (mb-table-insert table2)
+    ))
 
 ;; -----------------------------------------------------------------------------
 
