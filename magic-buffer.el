@@ -195,7 +195,7 @@ window it is displayed")
   "Brakes when the window be narrower than the text."
   (let ((text "This paragraph will be centered in all windows.
 It will stay centered,
-even if the window is resized."))
+even if the window is re-sized."))
     (cl-dolist (text (split-string text "\n"))
       (insert (propertize text
                           'display
@@ -248,7 +248,7 @@ Curabitur vulputate vestibulum lorem"))
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Extra leading"
-  "The line-height propert only has effect when applied to newline characters."
+  "The line-height property only has effect when applied to newline characters."
   (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
 Integer placerat tristique nisl.
 Aenean in sem ac leo mollis blandit.
@@ -263,7 +263,7 @@ Nunc eleifend leo vitae magna.
 supports a character could be useful). Spaces might appear between characters,
 especially with smaller font sizes.
 
-Unicode box charactres can be found in the source code."
+Unicode box characters can be found in the source code."
 
   ;; ─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏
 
@@ -353,8 +353,8 @@ make new ones is to use `fringe-helper'."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Pointer shapes"
-  "Hover with your mouse over the labels to change the poiner.
-For some reason doens't work when I use my .emacs"
+  "Hover with your mouse over the labels to change the pointer.
+For some reason doesn't work when I use my .emacs"
   (insert (propertize "text"
                       'pointer 'text
                       'face '(:background "DarkBlue"))
@@ -408,6 +408,7 @@ was made to improve the situation, but it makes things worse on occasion."
 (mb-section "SVG"
   "More complex effects can be achieved through SVG"
   (mb-subsection-header "Resizing an masking")
+  ;; The link probably won't work on winodws
   (let ((data (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"109\" height=\"150\">
           <defs>
           <clipPath id=\"circularPath\" clipPathUnits=\"objectBoundingBox\">

@@ -10,7 +10,7 @@ You can add the following snippet to your .emacs. It will download and install t
       (interactive)
       (let ((try-downloading
              (lambda ()
-               (let ((lexical-binding t))
+               (let (( lexical-binding t))
                  (with-current-buffer
                      (url-retrieve-synchronously
                       "https://raw.github.com/sabof/magic-buffer/master/magic-buffer.el")
