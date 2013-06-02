@@ -384,31 +384,31 @@ make new ones is to use an external package called `fringe-helper'."
 For some reason doesn't work when I use my .emacs"
   (insert (propertize "text"
                       'pointer 'text
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"
           (propertize "arrow"
                       'pointer 'arrow
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"
           (propertize "hand"
                       'pointer 'hand
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"
           (propertize "vdrag"
                       'pointer 'vdrag
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"
           (propertize "hdrag"
                       'pointer 'hdrag
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"
           (propertize "modeline"
                       'pointer 'modeline
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"
           (propertize "hourglass"
                       'pointer 'hourglass
-                      'face '(:background "DarkBlue"))
+                      'face '(:background "DeepSkyBlue"))
           "\n"))
 
 ;; -----------------------------------------------------------------------------
