@@ -37,13 +37,12 @@
 
 (defun mb-in-range (number from to)
   "Test whether a number is in FROM \(inclusive\) TO \(exclusive\) range."
-  (and (<= from number)
-       (< number to)))
+  (and (<= from number) (< number to)))
 
 (defun mb-table-asciify-char (char)
   "Convert UTF8 table characters to their ASCII equivalents.
 If a character is not a table character, it will be left unchanged."
-  ;; All table characters belong to the range 9472 - 9600, inclusive - exclusive
+  ;; All table characters belong to the range 9472 inclusive - 9600 exclusive,
   ;; The comment contains the first character of each range
   (cond ( (mb-in-range char 9472 9474) ?-) ; ─
         ( (mb-in-range char 9474 9476) ?|) ; │
@@ -161,7 +160,10 @@ If you need to find widths of multiple regions, you might want to use
              (mb-region-pixel-width
               (point)
               (line-end-position)))
-           ( space-spec `(space :align-to (- right (,pixel-width)))))
+           ;; There is an off-by one bug. When word-wrap is enabled, the line will
+           ;; break. That's why I substract one pixel in the end. This will show
+           ;; up as a single empty character on terminals.
+           ( space-spec `(space :align-to (- right (,pixel-width) (1)))))
       (if (looking-at "[\t ]+")
           (put-text-property (match-beginning 0) (match-end 0) 'display space-spec)
           (insert (propertize " " 'display space-spec)))
@@ -301,7 +303,7 @@ window it is displayed")
   (let* (( text "This paragraph will be centered in all windows.
 It will stay centered,
 even if the window is re-sized.")
-         ( spec `(space :align-to (- center (,(/ (length text) 2) . width)))))
+         ( spec `(space :align-to (- center ,(/ (length text) 2)))))
     (cl-dolist (text (split-string text "\n"))
       (insert (propertize text 'display spec) text "\n"))))
 
@@ -310,7 +312,10 @@ even if the window is re-sized.")
 (mb-section "Display on both sides of the window"
   (let* (( text-left "LEFT --")
          ( text-right "-- RIGHT")
-         ( spec `(space :align-to (- right (,(length text-right) . width)))))
+         ;; There is an off-by one bug. When word-wrap is enabled, the line will
+         ;; break. That's why I substract one pixel in the end. This will show
+         ;; up as a single empty character on terminals.
+         ( spec `(space :align-to (- right ,(length text-right) (1)))))
     (insert text-left)
     (insert (propertize " " 'display spec))
     (insert text-right)
@@ -407,8 +412,8 @@ A table of unicode box characters can be found in the source code."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Quoted paragraph"
-  "The red line is drawn using text-properties, so it the text can be
-copy-pasted with without extra spaces."
+  "The red line is drawn using text-properties, so the text can
+be copy-pasted with without extra spaces."
   (let (( prefix (concat " "
                          (propertize " "
                                      'display '(space :width (4))
@@ -491,14 +496,18 @@ For some reason doesn't work when my .emacs is loaded."
 (mb-section "Images"
   "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
 was made to improve the situation, but it makes things worse on occasion."
-  (let ((image-size (image-size `(image :type jpeg :file ,mb-expamle-image))))
+  (let (( image-size
+          ;; For terminal displays
+          (ignore-errors
+            (image-size `(image :type jpeg :file ,mb-expamle-image)))))
     (mb-subsection-header "Simple case")
     (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]")
     (insert "\n\n")
-    (mb-subsection-header "Using `insert-sliced-image'")
-    (insert-sliced-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]"
-                         nil (car image-size))
-    (insert "\n")
+    (when image-size
+      (mb-subsection-header "Using `insert-sliced-image'")
+      (insert-sliced-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]"
+                           nil (car image-size))
+      (insert "\n"))
     (mb-subsection-header "You can also crop images, or add a number of effects")
     (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]" nil
                   '(60 25 100 150))
@@ -555,7 +564,6 @@ was made to improve the situation, but it makes things worse on occasion."
         (fundamental-mode)
         (progn
           (setq truncate-lines nil)
-          (setq word-wrap nil) ; Bug workaround
           (setq line-spacing 0)
           (setq left-fringe-width 8
                 right-fringe-width 8))
@@ -564,11 +572,7 @@ was made to improve the situation, but it makes things worse on occasion."
                             'face 'info-title-2)
                 "\n")
         (mb-insert-filled
-         (propertize "The right-align examples won't work with
-word-wrap, so it's off. They also won't work on TTY. This can be fixed by
-shrking the spaces by a single character.
-
-If you want to see the source, do `M-x find-function magic-buffer'"
+         (propertize "If you want to see the source, do `M-x find-function magic-buffer'"
                      'face 'font-lock-comment-face))
         (insert "\n\n")
         (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
