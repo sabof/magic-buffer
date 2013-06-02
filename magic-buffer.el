@@ -152,8 +152,7 @@ If you need to find widths of multiple regions, you might want to use
  `mb-region-pixel-width-multiple', as it will be faster."
   (car (mb-region-pixel-width-multiple (list (cons from to)))))
 
-(defun mb-flush-line-right ()
-  "Works with variable width fonts."
+(defun mb-align-variable-width-internal (spec-func)
   (save-excursion
     (goto-char (line-beginning-position))
     (let* (( pixel-width
@@ -163,16 +162,31 @@ If you need to find widths of multiple regions, you might want to use
            ;; There is an off-by one bug. When word-wrap is enabled, the line will
            ;; break. That's why I substract one pixel in the end. This will show
            ;; up as a single empty character on terminals.
-           ( space-spec `(space :align-to (- right (,pixel-width) (1)))))
+           ( space-spec (funcall spec-func pixel-width)
+                        ))
       (if (looking-at "[\t ]+")
           (put-text-property (match-beginning 0) (match-end 0) 'display space-spec)
-          (insert (propertize " " 'display space-spec)))
+          (put-text-property (line-beginning-position)
+                             (line-end-position)
+                             'line-prefix (propertize " " 'display space-spec)))
       (goto-char (line-end-position))
       (skip-chars-backward "\t ")
       (when (looking-at "[\t ]+")
         (put-text-property (match-beginning 0) (match-end 0)
                            'invisible t))
       )))
+
+(defun mb-center-line-variable-width ()
+  "Only modifies the properties, not the text."
+  (mb-align-variable-width-internal
+   (lambda (pixel-width)
+     `(space :align-to (- center (,(/ pixel-width 2)))))))
+
+(defun mb-flush-line-right-variable-width ()
+  "Only modifies the properties, not the text."
+  (mb-align-variable-width-internal
+   (lambda (pixel-width)
+     `(space :align-to (- right (,pixel-width) (1))))))
 
 ;;; Helpers --------------------------------------------------------------------
 ;; Utilities that make this presentation possible
@@ -323,21 +337,34 @@ even if the window is re-sized.")
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Variable width text flushed right"
-  "Won't work should any of the lines be wider that the frame, at the moment
-of creation. Will also break, should the size of frame's text change. There
-might be a better way to do it, using bidi text support."
+(mb-section "Aligning variable width text"
+  "Won't work should any of the lines be wider that the frame, at
+ the moment of creation. Will also break, should the size of
+ frame's text change. Generating the text properties is slower
+ than for fixed-width fonts. There might be a better way to do
+ right alignement, using bidi text support."
   (let (( paragraphs "Lorem ipsum dolor
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem"))
+    (mb-subsection-header "Center")
+    (cl-loop for text in (split-string paragraphs "\n")
+             for height = 2.0 then (- height 0.4)
+             do (let (( ori-point (point))
+                      ( face-spec  `(:inherit variable-pitch :height ,height)))
+                  (insert (propertize text 'face face-spec))
+                  ;; (goto-char ori-point)
+                  (mb-center-line-variable-width)
+                  (insert "\n")
+                  ))
+    (mb-subsection-header "Right")
     (cl-loop for text in (split-string paragraphs "\n")
              for height = 1.0 then (+ height 0.4)
              do (let (( ori-point (point))
                       ( face-spec  `(:inherit variable-pitch :height ,height)))
                   (insert (propertize text 'face face-spec))
                   ;; (goto-char ori-point)
-                  (mb-flush-line-right)
+                  (mb-flush-line-right-variable-width)
                   (insert "\n")
                   ))
     ))
