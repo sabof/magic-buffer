@@ -1,4 +1,4 @@
-;;; magic-buffer.el --- -*- lexical-binding: t; truncate-lines: t; -*-
+;;; magic-buffer.el --- -*- lexical-binding: t; truncate-lines: nil; -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/magic-buffer
@@ -233,17 +233,6 @@ If you need to find widths of multiple regions, you might want to use
                         (lambda ()
                           ,@body)))))
 
-(defun mb-diff-windows-colorize (point-a point-b window-list)
-  (cl-dolist (win (get-buffer-window-list nil nil t))
-    (unless (assoc win (cdr window-list))
-      (let ((ov (make-overlay point-a point-b)))
-        (setcdr window-list (cl-acons win ov (cdr window-list)))
-        (overlay-put ov 'window win)
-        (overlay-put ov 'face
-                     `(:background
-                       ,(mb-random-hex-color))))
-      )))
-
 (defun mb-insert-filled (string)
   (let ((beginning (point)))
     (insert string)
@@ -259,19 +248,19 @@ If you need to find widths of multiple regions, you might want to use
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal line"
-            "The point-entered property prevents the point from staying on that location,
+  "The point-entered property prevents the point from staying on that location,
 since that would change the color of the line."
-            (insert (propertize
-                     ;; (concat (make-string 999 ?\s ) "\n")
-                     "\n"
-                     'display `(space :align-to right)
-                     ;; 'face '(:strike-through t)
-                     'face '(:underline t)
-                     'point-entered (lambda (old new)
-                                      (forward-line
-                                       (if (< old new) 1 -1)))
-                     ))
-            (insert "\n"))
+  (insert (propertize
+           ;; (concat (make-string 999 ?\s ) "\n")
+           "\n"
+           'display `(space :align-to right)
+           ;; 'face '(:strike-through t)
+           'face '(:underline t)
+           'point-entered (lambda (old new)
+                            (forward-line
+                             (if (< old new) 1 -1)))
+           ))
+  (insert "\n"))
 
 ;; -----------------------------------------------------------------------------
 
@@ -288,45 +277,42 @@ the type of display (Graphical, tty, \"full color\" tty)."
   (let (( text "This text will have a different background color in each \
 window it is displayed")
         (window-list (list 'window-list))
-        point-a
+        (point-a (point))
         point-b)
-    (setq point-a (point))
     (insert text)
     (setq point-b (point))
     (add-hook 'window-configuration-change-hook
               (lambda (&rest ignore)
-                (mb-diff-windows-colorize
-                 point-a
-                 point-b
-                 window-list))
-              nil t)
-    (mb-diff-windows-colorize point-a point-b window-list)
-    ))
+                (cl-dolist (win (get-buffer-window-list nil nil t))
+                  (unless (assoc win (cdr window-list))
+                    (let ((ov (make-overlay point-a point-b)))
+                      (setcdr window-list (cl-acons win ov (cdr window-list)))
+                      (overlay-put ov 'window win)
+                      (overlay-put ov 'face
+                                   `(:background
+                                     ,(mb-random-hex-color))))
+                    )))
+              nil t)))
 
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal Centering"
   "Brakes when the window be narrower than the text."
-  (let ((text "This paragraph will be centered in all windows.
+  (let* (( text "This paragraph will be centered in all windows.
 It will stay centered,
-even if the window is re-sized."))
+even if the window is re-sized.")
+         ( spec `(space :align-to (- center (,(/ (length text) 2) . width)))))
     (cl-dolist (text (split-string text "\n"))
-      (insert (propertize text
-                          'display
-                          `(space :align-to (- center (,(/ (length text) 2)
-                                                       . width))))
-              text
-              "\n"))))
+      (insert (propertize text 'display spec) text "\n"))))
 
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Display on both sides of the window"
-  (let (( text-left "LEFT --")
-        ( text-right "-- RIGHT"))
+  (let* (( text-left "LEFT --")
+         ( text-right "-- RIGHT")
+         ( spec `(space :align-to (- right (,(length text-right) . width)))))
     (insert text-left)
-    (insert (propertize " " 'display
-                        `(space :align-to (+ right (,(- (length text-right))
-                                                    . width)))))
+    (insert (propertize " " 'display spec))
     (insert text-right)
     ))
 
@@ -342,13 +328,9 @@ Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem"))
     (cl-loop for text in (split-string paragraphs "\n")
              for height = 1.0 then (+ height 0.4)
-             do (let ((ori-point (point))
-                      pixel-width)
-                  (insert (propertize
-                           text 'face `(:inherit
-                                        variable-pitch
-                                        :height ,height
-                                        )))
+             do (let (( ori-point (point))
+                      ( face-spec  `(:inherit variable-pitch :height ,height)))
+                  (insert (propertize text 'face face-spec))
                   ;; (goto-char ori-point)
                   (mb-flush-line-right)
                   (insert "\n")
@@ -412,6 +394,12 @@ A table of unicode box characters can be found in the source code."
 ╰──────┸──────╯
 "
                            1)))
+
+    ;; In an application, especially one that where the content changes
+    ;; frequently, it would probably be better to determine whether all used
+    ;; table characters have equal width with letters once, and then use them or
+    ;; ASCII accoringly. This would be noticably faster.
+
     (mb-table-insert table1)
     (mb-table-insert table2)
     ))
@@ -444,8 +432,8 @@ make new ones is to use an external package called `fringe-helper'."
   (let (( insert-fringe-bitmap
           (lambda (symbol-name)
             (insert (propertize " " 'display
-                                `((left-fringe ,symbol-name 'font-lock-comment-face)
-                                  (right-fringe ,symbol-name 'font-lock-comment-face)))))))
+                                `((left-fringe ,symbol-name font-lock-comment-face)
+                                  (right-fringe ,symbol-name font-lock-comment-face)))))))
     (cl-loop for pair in fringe-indicator-alist
              for iter = 0 then (1+ iter)
              do
