@@ -300,6 +300,8 @@ Unicode box charactres can be found in the source code."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Quoted paragraph"
+  "The red line is drawn using text-properties, so it the text can be
+copy-pasted with ease."
   (let (( prefix (concat " "
                          (propertize " "
                                      'display '(space :width (4))
