@@ -306,7 +306,7 @@ Unicode box charactres can be found in the source code."
 
 (mb-section "Quoted paragraph"
   "The red line is drawn using text-properties, so it the text can be
-copy-pasted with ease."
+copy-pasted with without extra spaces."
   (let (( prefix (concat " "
                          (propertize " "
                                      'display '(space :width (4))
@@ -415,7 +415,7 @@ was made to improve the situation, but it makes things worse on occasion."
           </clipPath>
           </defs>
           <image id=\"image\" width=\"109\" height=\"150\" style=\"clip-path: url(#circularPath);\"
-          xlink:href=\"file:///media/projects/vb-shared/.emacs.d/site-lisp/my-scripts/magic-buffer/lady-with-an-ermine.jpg\" />
+          xlink:href=\"file://%s\" />
           </svg>"
                       mb-expamle-image)))
     (insert-image `(image :type svg :data ,data)
