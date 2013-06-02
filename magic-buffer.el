@@ -104,7 +104,10 @@
         ))
   "a test face")
 
-(defun mb-region-pixel-width (from to)
+(defun mb-region-pixel-width-multiple (alist)
+  "Like `mb-region-pixel-width', but for multiple regions.
+Takes an ALIST of format \(\(BEGINNING . END\) ... \) as an argument,
+returns a list of lengths"
   (let (( position-x
           (lambda (pos)
             (goto-char pos)
@@ -120,9 +123,16 @@
         (delete-other-windows)
         (unless (eq (current-buffer) (window-buffer))
           (set-window-buffer nil (current-buffer)))
-        (abs (- (funcall position-x from)
-                (funcall position-x to)))
+        (cl-loop for (from . to) in alist
+                 collecting (abs (- (funcall position-x from)
+                                    (funcall position-x to))))
         ))))
+
+(defun mb-region-pixel-width (from to)
+  "Find a region's pixel width.
+If you need to find widths of multiple regions, you might want to use
+ `mb-region-pixel-width-multiple', as it will be faster."
+  (car (mb-region-pixel-width-multiple (list (cons from to)))))
 
 (defmacro mb-section (name &rest body)
   (declare (indent defun))
@@ -255,12 +265,10 @@ Nunc eleifend leo vitae magna.
 (mb-section "Utf-8 tables"
   "Some fonts don't support box characters well, for example the
 widths might be different. For those cases an ASCII fallback is
-provided.
+provided. If you know which fonts apart from \"DejaVu Sans Mono\" render
+correctly, please let me know.
 
 Spaces might appear between characters, especially with smaller font sizes.
-
-If you know which fonts apart from \"DejaVu Sans Mono\" render
-correctly, please let me know.
 
 A table of unicode box characters can be found in the source code."
 
@@ -287,8 +295,7 @@ A table of unicode box characters can be found in the source code."
 ║ text │ text ║ │ text ┃ text │
 ╟──────┼──────╢ ┝━━━━━━╋━━━━━━┥
 ║ text │ text ║ │ text ┃ text │
-╚══════╧══════╝ ╰──────┸──────╯
-"
+╚══════╧══════╝ ╰──────┸──────╯"
                            1))
         (start-pos (point))
         end-pos)
@@ -301,22 +308,21 @@ A table of unicode box characters can be found in the source code."
                    string
                    'face '(:height
                            2.0
-                           :family "DejaVu Sans Mono")
+                           ;; :family "DejaVu Sans Mono"
+                           )
                    ;; 'line-height 1.0
                    ;; 'line-spacing 0
                    ))
           (setq end-pos (point))
           (goto-char start-pos)
-          (cl-loop until (= (point) end-pos)
-                   with mono-length = (mb-region-pixel-width
-                                       (point) (1+ (point)))
-                   do (cl-assert (or (not (char-after))
-                                     (equal (char-after) ?\n )
-                                     (= (mb-region-pixel-width
-                                         (point) (1+ (point)))
-                                        mono-length)))
-                   (forward-char))
-          )
+          (let (( regions
+                  (mb-region-pixel-width-multiple
+                   (cl-loop while (< (point) end-pos)
+                            collecting (cons (point) (line-end-position))
+                            until (cl-plusp (forward-line))))))
+            (cl-assert (cl-every (apply-partially '= (car regions))
+                                 regions)))
+          (goto-char end-pos))
       (error (delete-region start-pos end-pos)
              (insert (substring "
 |=============| /-------------\\
