@@ -65,6 +65,7 @@
 ;;; Helpers --------------------------------------------------------------------
 
 (defun mb-in-range (number from to)
+  "Test whether a number is in FROM \(inclusive\) TO \(exclusive\) range."
   (and (<= from number)
        (< number to)))
 
@@ -145,6 +146,10 @@ the corresponding region of the buffer."
       (error (mb-table-asciify-region start-pos end-pos)
              ))))
 
+(defun mb-random-hex-color ()
+  (apply 'format "#%02X%02X%02X"
+         (mapcar 'random (make-list 3 255))))
+
 (defun mb-diff-windows-colorize (point-a point-b window-list)
   (cl-dolist (win (get-buffer-window-list nil nil t))
     (unless (assoc win (cdr window-list))
@@ -153,8 +158,7 @@ the corresponding region of the buffer."
         (overlay-put ov 'window win)
         (overlay-put ov 'face
                      `(:background
-                       ,(apply 'format "#%02X%02X%02X"
-                               (mapcar 'random (make-list 3 255))))))
+                       ,(mb-random-hex-color))))
       )))
 
 (defun mb-insert-filled (string)
@@ -208,6 +212,25 @@ returns a list of lengths"
                  collecting (abs (- (funcall position-x from)
                                     (funcall position-x to))))
         ))))
+
+(defun mb-flush-line-right ()
+  "Works with variable width fonts."
+  (save-excursion
+    (goto-char (line-beginning-position))
+    (let* (( pixel-width
+             (mb-region-pixel-width
+              (point)
+              (line-end-position)))
+           ( space-spec `(space :align-to (- right (,pixel-width)))))
+      (if (looking-at "[\t ]+")
+          (put-text-property (match-beginning 0) (match-end 0) 'display space-spec)
+          (insert (propertize " " 'display space-spec)))
+      (goto-char (line-end-position))
+      (skip-chars-backward "\t ")
+      (when (looking-at "[\t ]+")
+        (put-text-property (match-beginning 0) (match-end 0)
+                           'invisible t))
+      )))
 
 (defun mb-region-pixel-width (from to)
   "Find a region's pixel width.
@@ -320,14 +343,10 @@ Curabitur vulputate vestibulum lorem"))
                                         variable-pitch
                                         :height ,height
                                         )))
-                  (setq pixel-width (mb-region-pixel-width ori-point (point)))
-                  (goto-char ori-point)
-                  ;; (insert (format "%s -- " pixel-width))
-                  (insert (propertize
-                           " " 'display
-                           `(space :align-to (- right (,pixel-width)))))
-                  (goto-char (point-max))
-                  (insert "\n")))
+                  ;; (goto-char ori-point)
+                  (mb-flush-line-right)
+                  (insert "\n")
+                  ))
     ))
 
 ;; -----------------------------------------------------------------------------
@@ -448,35 +467,35 @@ make new ones is to use an external package called `fringe-helper'."
 
 (mb-section "Pointer shapes"
   "Hover with your mouse over the labels to change the pointer.
-For some reason doesn't work when I use my .emacs"
+For some reason doesn't work when my .emacs is loaded."
   (insert (propertize "text"
                       'pointer 'text
-                      'face '(:background "DeepSkyBlue"))
-          "\n"
+                      'face '(:background "Purple"))
+          "\n\n"
           (propertize "arrow"
                       'pointer 'arrow
-                      'face '(:background "DeepSkyBlue"))
-          "\n"
+                      'face '(:background "Purple"))
+          "\n\n"
           (propertize "hand"
                       'pointer 'hand
-                      'face '(:background "DeepSkyBlue"))
-          "\n"
+                      'face '(:background "Purple"))
+          "\n\n"
           (propertize "vdrag"
                       'pointer 'vdrag
-                      'face '(:background "DeepSkyBlue"))
-          "\n"
+                      'face '(:background "Purple"))
+          "\n\n"
           (propertize "hdrag"
                       'pointer 'hdrag
-                      'face '(:background "DeepSkyBlue"))
-          "\n"
+                      'face '(:background "Purple"))
+          "\n\n"
           (propertize "modeline"
                       'pointer 'modeline
-                      'face '(:background "DeepSkyBlue"))
-          "\n"
+                      'face '(:background "Purple"))
+          "\n\n"
           (propertize "hourglass"
                       'pointer 'hourglass
-                      'face '(:background "DeepSkyBlue"))
-          "\n"))
+                      'face '(:background "Purple"))
+          "\n\n"))
 
 ;; -----------------------------------------------------------------------------
 
@@ -549,8 +568,8 @@ was made to improve the situation, but it makes things worse on occasion."
                 "\n")
         (mb-insert-filled
          (propertize "The right-align examples won't work with
- word-wrap, so it's off. They also won't work on TTY. This can be fixed by
- shrking the spaces by a single character.
+word-wrap, so it's off. They also won't work on TTY. This can be fixed by
+shrking the spaces by a single character.
 
 If you want to see the source, do `M-x find-library magic-buffer'"
                      'face 'font-lock-comment-face))
