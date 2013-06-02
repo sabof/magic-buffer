@@ -365,8 +365,8 @@ Nunc eleifend leo vitae magna.
 (mb-section "Utf-8 tables"
   "Some fonts don't support box characters well, for example the
 widths might be different. For those cases an ASCII fallback is
-provided. If you know which fonts apart from \"DejaVu Sans Mono\" render
-correctly, please let me know.
+provided. If you know which widely used fonts apart from
+\"DejaVu Sans Mono\" render correctly, please let me know.
 
 Spaces might appear between characters, especially with smaller font sizes.
 
