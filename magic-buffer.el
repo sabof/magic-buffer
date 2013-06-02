@@ -1,4 +1,4 @@
-;;; magic-buffer.el --- -*- lexical-binding: t-*-
+;;; magic-buffer.el --- -*- lexical-binding: t; truncate-lines: t; -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/magic-buffer
@@ -250,11 +250,16 @@ Nunc eleifend leo vitae magna.
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Utf-8 tables"
-  "Some fonts don't support box characters (A way to find out whether a font
-supports a character could be useful). Spaces might appear between characters,
-especially with smaller font sizes.
+  "Some fonts don't support box characters well, for example the
+widths might be different. For those cases an ASCII fallback is
+provided.
 
-Unicode box characters can be found in the source code."
+Spaces might appear between characters, especially with smaller font sizes.
+
+If you know which fonts apart from \"DejaVu Sans Mono\" render
+correctly, please let me know.
+
+A table of unicode box characters can be found in the source code."
 
   ;; ─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏
 
@@ -310,13 +315,14 @@ Unicode box characters can be found in the source code."
                    (forward-char))
           )
       (error (delete-region start-pos end-pos)
-             (insert "
-|=============| /-------------\
+             (insert (substring "
+|=============| /-------------\\
 |  **ASCII**  | |  **ASCII**  |
 |-------------| |-------------|
 | FALL | BACK | | FALL | BACK |
-|=============| \-------------/
-")))))
+|=============| \\-------------/
+"
+                                1))))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -477,7 +483,9 @@ was made to improve the situation, but it makes things worse on occasion."
         (mb-insert-filled
          (propertize "The right-align examples won't work with
  word-wrap, so it's off. They also won't work on TTY. This can be fixed by
- shrking the spaces by a single character."
+ shrking the spaces by a single character.
+
+If you want to see the source, do `M-x find-library magic-buffer'"
                      'face 'font-lock-comment-face))
         (insert "\n\n")
         (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
