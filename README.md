@@ -8,16 +8,22 @@ You can add the following snippet to your .emacs. It will download and install t
 
     (defun magic-buffer ()
       (interactive)
-      (let ((lexical-binding t))
-        (with-current-buffer
-          (url-retrieve-synchronously
-           "https://raw.github.com/sabof/magic-buffer/master/magic-buffer.el")
-          (goto-char (point-min))
-          (search-forward "\n\n")
-          (delete-region (point-min) (point))
-          (setq lexical-binding t)
-          (eval-buffer)))
+      (let ((try-downloading
+             (lambda ()
+               (let ((lexical-binding t))
+                 (with-current-buffer
+                     (url-retrieve-synchronously
+                      "https://raw.github.com/sabof/magic-buffer/master/magic-buffer.el")
+                   (goto-char (point-min))
+                   (search-forward "\n\n")
+                   (delete-region (point-min) (point))
+                   (setq lexical-binding t)
+                   (eval-buffer))))))
+        (condition-case nil
+            (funcall try-downloading)
+          (error (funcall try-downloading))))
       (magic-buffer))
+
 
 then
 
