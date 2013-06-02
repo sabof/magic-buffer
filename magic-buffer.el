@@ -108,10 +108,12 @@
   (let (( position-x
           (lambda (pos)
             (goto-char pos)
-            (goto-char (line-beginning-position))
-            (set-window-start nil (point))
-            (goto-char pos)
-            (car (nth 2 (posn-at-point pos)))))
+            (or (car (nth 2 (posn-at-point pos)))
+                (progn
+                  (goto-char (line-beginning-position))
+                  (set-window-start nil (point))
+                  (goto-char pos)
+                  (car (nth 2 (posn-at-point pos)))))))
         before after)
     (save-excursion
       (save-window-excursion
