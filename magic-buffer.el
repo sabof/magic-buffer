@@ -571,7 +571,7 @@ was made to improve the situation, but it makes things worse on occasion."
 word-wrap, so it's off. They also won't work on TTY. This can be fixed by
 shrking the spaces by a single character.
 
-If you want to see the source, do `M-x find-library magic-buffer'"
+If you want to see the source, do `M-x find-function magic-buffer'"
                      'face 'font-lock-comment-face))
         (insert "\n\n")
         (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
