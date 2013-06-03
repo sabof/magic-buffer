@@ -250,6 +250,18 @@ If you need to find widths of multiple regions, you might want to use
   (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
   (insert "\n"))
 
+(defmacro mb-insert-info-links (&rest links)
+  `(progn
+     (delete-char -1)
+     ,@(mapcar (lambda (link)
+                 `(progn
+                    (insert-text-button ,(cadr link) 'action
+                                        (lambda (e) (info ,(cadr link))))
+                    (insert (propertize " | " 'face 'bold))))
+               links)
+     (delete-char -3)
+     (insert "\n\n")))
+
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Horizontal line"
@@ -268,8 +280,9 @@ since that would change the color of the line."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate displays"
-  ;; (info "(elisp) Defining Faces")
-  ;; (info "(elisp) Display Feature Testing")
+  (mb-insert-info-links
+   (info "(elisp) Defining Faces")
+   (info "(elisp) Display Feature Testing"))
 
   (defface mb-diff-terminal
     '(( ((type graphic))
@@ -296,7 +309,8 @@ the type of display (Graphical, tty, \"full color\" tty)."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate windows"
-  ;; (info "(elisp) Overlay Properties")
+  (mb-insert-info-links
+   (info "(elisp) Overlay Properties"))
   (let (( text "This text will have a different background color in each \
   window it is displayed")
         (window-list (list 'window-list))
@@ -320,9 +334,10 @@ the type of display (Graphical, tty, \"full color\" tty)."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Aligning fixed width text"
-  "The alignment will persist on window resizing, unless the window is narrower
-than the text."
-  ;; (info "(elisp) Pixel Specification")
+  (mb-insert-info-links
+   (info "(elisp) Pixel Specification"))
+  (mb-comment "The alignment will persist on window resizing, unless the window is narrower
+than the text.")
   (let* (( text-lines (split-string "Lorem ipsum dolor sit amet
 Sed bibendum
 Curabitur lacinia pulvinar nibh
@@ -359,12 +374,13 @@ Phasellus at dui in ligula mollis ultricies"
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Aligning variable width text"
-  "Won't work should any of the text-lines be wider that the frame, at
+  (mb-insert-info-links
+   (info "(elisp) Pixel Specification"))
+  (mb-comment "Won't work should any of the text-lines be wider that the frame, at
 the moment of creation. Will also break, should the size of
 frame's text change. Generating the text properties is a lot slower
 than for fixed-width fonts. There might be a better way to do
-right alignement, using bidi text support."
-  ;; (info "(elisp) Pixel Specification")
+right alignement, using bidi text support.")
   (let (( paragraphs "Lorem ipsum dolor
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
@@ -513,9 +529,10 @@ dolor sit amet, consectetuer adipiscing elit."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Fringe indicators"
-  "fringe-indicator-alist contains the default indicators. The easiest way to
-make new ones is to use an external package called `fringe-helper'."
-  ;; (info "(elisp) Fringe Indicators")
+  (mb-insert-info-links
+   (info "(elisp) Fringe Indicators"))
+  (mb-comment "fringe-indicator-alist contains the default indicators. The easiest way to
+make new ones is to use an external package called `fringe-helper'.")
   (let (( insert-fringe-bitmap
           (lambda (symbol-name)
             (insert (propertize " " 'display
@@ -542,9 +559,10 @@ make new ones is to use an external package called `fringe-helper'."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Pointer shapes"
-  "Hover with your mouse over the labels to change the pointer.
-For some reason doesn't work when my .emacs is loaded."
-  ;; (info "(elisp) Pointer Shape")
+  (mb-insert-info-links
+   (info "(elisp) Pointer Shape"))
+  (mb-comment "Hover with your mouse over the labels to change the pointer.
+For some reason doesn't work when my .emacs is loaded.")
   (mapc (lambda (pointer-sym)
           (insert (propertize
                    (symbol-name pointer-sym)
