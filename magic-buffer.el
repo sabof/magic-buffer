@@ -109,8 +109,6 @@ fallbacks, if needed."
                            2.0
                            :family "DejaVu Sans Mono"
                            )
-                   ;; 'line-height 1.0
-                   ;; 'line-spacing 0
                    ))
           (setq end-pos (point))
           (goto-char start-pos)
@@ -274,10 +272,8 @@ If you need to find widths of multiple regions, you might want to use
   "The point-entered property prevents the point from staying on that location,
 since that would change the color of the line."
   (insert (propertize
-           ;; (concat (make-string 999 ?\s ) "\n")
            "\n"
-           'display `(space :align-to right)
-           ;; 'face '(:strike-through t)
+           'display `(space :align-to (- right (1)))
            'face '(:underline t)
            'point-entered (lambda (old new)
                             (forward-line
@@ -288,6 +284,8 @@ since that would change the color of the line."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate displays"
+  ;; (info "(elisp) Defining Faces")
+  ;; (info "(elisp) Display Feature Testing")
   (mb-insert-filled
    (propertize "This text will have a different background, depending on \
 the type of display (Graphical, tty, \"full color\" tty)."
@@ -297,8 +295,9 @@ the type of display (Graphical, tty, \"full color\" tty)."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Differentiate windows"
+  ;; (info "(elisp) Overlay Properties")
   (let (( text "This text will have a different background color in each \
-window it is displayed")
+  window it is displayed")
         (window-list (list 'window-list))
         (point-a (point))
         point-b)
@@ -364,6 +363,7 @@ Phasellus at dui in ligula mollis ultricies"
  frame's text change. Generating the text properties is a lot slower
  than for fixed-width fonts. There might be a better way to do
  right alignement, using bidi text support."
+  ;; (info "(elisp) Pixel Specification")
   (let (( paragraphs "Lorem ipsum dolor
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
@@ -482,6 +482,7 @@ dolor sit amet, consectetuer adipiscing elit."
 (mb-section "Fringe indicators"
   "fringe-indicator-alist contains the default indicators. The easiest way to
 make new ones is to use an external package called `fringe-helper'."
+  ;; (info "(elisp) Fringe Indicators")
   (let (( insert-fringe-bitmap
           (lambda (symbol-name)
             (insert (propertize " " 'display
@@ -545,6 +546,7 @@ For some reason doesn't work when my .emacs is loaded."
 (mb-section "Images"
   "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
 was made to improve the situation, but it makes things worse on occasion."
+
   (let (( image-size
           ;; For terminal displays
           (ignore-errors
