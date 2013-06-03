@@ -226,22 +226,6 @@ If you need to find widths of multiple regions, you might want to use
          file-name t)
         file-name)))
 
-(defface mb-diff-terminal
-  '(( ((type graphic))
-      (:background "DarkRed"))
-
-    ( ((class color)
-       (min-colors 88))
-      (:background "blue"))
-
-    ( ((class color)
-       (min-colors 88))
-      (:background "green"))
-
-    ( t (:background "gray")
-        ))
-  "a test face")
-
 (defmacro mb-section (name &rest body)
   (declare (indent defun))
   `(let* (( cons (car (push (list (prog1 mb-counter
@@ -286,6 +270,23 @@ since that would change the color of the line."
 (mb-section "Differentiate displays"
   ;; (info "(elisp) Defining Faces")
   ;; (info "(elisp) Display Feature Testing")
+
+  (defface mb-diff-terminal
+    '(( ((type graphic))
+        (:background "DarkRed"))
+
+      ( ((class color)
+         (min-colors 88))
+        (:background "blue"))
+
+      ( ((class color)
+         (min-colors 88))
+        (:background "green"))
+
+      ( t (:background "gray")
+          ))
+    "a test face")
+
   (mb-insert-filled
    (propertize "This text will have a different background, depending on \
 the type of display (Graphical, tty, \"full color\" tty)."
@@ -389,6 +390,38 @@ Curabitur vulputate vestibulum lorem"))
                   (insert "\n")
                   ))
     ))
+
+;; -----------------------------------------------------------------------------
+
+(mb-section "Re-align after variable-width font lines"
+  "Similar to what `fill-column-indicator' does. A similar effect
+ can be achieved by setting `tab-width' to a large number, and
+ splitting columns with tabs, but this will affect tabs in the
+ whole buffer. The red line will move further to the right,
+ should the preceeding text be long."
+  (let* (( sentances (split-string
+                      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+Donec hendrerit tempor tellus.
+Donec pretium posuere tellus.
+Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus.
+Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.
+Nulla posuere.
+Donec vitae dolor.
+Nullam tristique diam non turpis.
+Cras placerat accumsan nulla.
+Nullam rutrum.
+Nam vestibulum accumsan nisl."
+                      "\n"))
+         ( spec `(space :align-to 80)))
+    (cl-dolist (sentance sentances)
+      (insert (propertize sentance 'face `(:inherit
+                                           variable-pitch
+                                           :height ,(+ 1.0 (/ (random 10) 10.0))))
+              (propertize " " 'display spec)
+              (propertize " " 'face '(:background "red")
+                          'display '(space :width (2)))
+              " More text"
+              "\n"))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -525,26 +558,35 @@ For some reason doesn't work when my .emacs is loaded."
 (mb-section "Images"
   "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
 was made to improve the situation, but it makes things worse on occasion."
-
+  ;; (info "(elisp) Showing Images")
+  ;; (info "(elisp) Image Descriptors")
   (let (( image-size
           ;; For terminal displays
-          (ignore-errors
-            (image-size `(image :type jpeg :file ,mb-expamle-image)))))
+          (ignore-errors (image-size `(image :type jpeg
+                                             :file ,mb-expamle-image)))))
     (mb-subsection-header "Simple case")
-    (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]")
+    (insert-image `(image :type jpeg
+                          :file ,mb-expamle-image)
+                  "[you should be seeing an image]")
     (insert "\n\n")
     (when image-size
       (mb-subsection-header "Using `insert-sliced-image'")
-      (insert-sliced-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]"
+      (insert-sliced-image `(image :type jpeg
+                                   :file ,mb-expamle-image)
+                           "[you should be seeing an image]"
                            nil (car image-size))
       (insert "\n"))
     (mb-subsection-header "You can also crop images, or add a number of effects")
-    (insert-image `(image :type jpeg :file ,mb-expamle-image) "[you should be seeing an image]" nil
-                  '(60 25 100 150))
+    (insert-image `(image :type jpeg
+                          :file ,mb-expamle-image)
+                  "[you should be seeing an image]"
+                  nil '(60 25 100 150))
     (insert " ")
-    (insert-image `(image :type jpeg :file ,mb-expamle-image :conversion disabled)
-                  "[you should be seeing an image]" nil
-                  '(60 25 100 150))))
+    (insert-image `(image :type jpeg
+                          :file ,mb-expamle-image
+                          :conversion disabled)
+                  "[you should be seeing an image]"
+                  nil '(60 25 100 150))))
 
 (mb-section "SVG"
   "More complex effects can be achieved through SVG"
@@ -577,14 +619,17 @@ was made to improve the situation, but it makes things worse on occasion."
 
 ;; -----------------------------------------------------------------------------
 
-;; (mb-section "Widgets"
-;;   ())
+(mb-section "Widgets"
+  (insert-text-button "Click me" 'action
+                      (lambda (event)
+                        (message "Button clicked"))))
 
 ;; -----------------------------------------------------------------------------
 
 ;; (mb-section "Colors")
 
 ;; -----------------------------------------------------------------------------
+
 (defun magic-buffer (&rest ignore)
   (interactive)
   (let ((buf (get-buffer-create "*magic-buffer*")))
