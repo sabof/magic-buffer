@@ -1,4 +1,4 @@
-;;; magic-buffer.el --- -*- lexical-binding: t; truncate-lines: nil; -*-
+;;; magic-buffer.el ---
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/magic-buffer
@@ -39,7 +39,7 @@
 (require 'cl-lib)
 (require 'info) ; For title faces
 
-;;; Library --------------------------------------------------------------------
+;;; * Library ------------------------------------------------------------------
 ;; Functions potentially useful in other contexts
 
 (defun mb-in-range (number from to)
@@ -120,7 +120,8 @@ fallbacks, if needed."
             (cl-assert (cl-every (apply-partially '= (car regions))
                                  regions)))
           (goto-char end-pos))
-      (error (mb-table-asciify-region start-pos end-pos)
+      (error (mb-table-asciify-region
+              start-pos end-pos)
              ))))
 
 (defun mb-random-hex-color ()
@@ -128,49 +129,47 @@ fallbacks, if needed."
          (mapcar 'random (make-list 3 255))))
 
 (defun mb-region-pixel-dimensions-multiple (alist)
-  (let (( position-x
-          (lambda (pos)
-            (goto-char pos)
-            (or (nth 2 (posn-at-point pos))
-                (progn
-                  (goto-char (line-beginning-position))
-                  (set-window-start nil (point))
-                  (goto-char pos)
-                  (nth 2 (posn-at-point pos))))))
-        before after)
+  (let* (( alist (copy-tree alist))
+         ( sorted-alist (cl-sort (copy-sequence alist)
+                                 '< :key 'car))
+         ( position-x
+           (lambda (pos)
+             (goto-char pos)
+             (or (nth 2 (posn-at-point pos))
+                 (progn
+                   (goto-char (line-beginning-position))
+                   (set-window-start nil (point))
+                   (goto-char pos)
+                   (nth 2 (posn-at-point pos))))))
+         before after)
     (save-excursion
       (save-window-excursion
         (delete-other-windows)
         (unless (eq (current-buffer) (window-buffer))
           (set-window-buffer nil (current-buffer)))
-        (cl-loop for (from . to) in alist
+        (cl-loop for cons in sorted-alist
                  collecting
                  (progn
                    (setq to (funcall position-x to)
-                         from (funcall position-x from))
-                   (cons (abs (- (car from) (car to)))
-                         (abs (- (cdr from) (cdr to))))))
-        ))))
+                     from (funcall position-x from))
+               (cons (abs (- (car from) (car to)))
+                     (abs (- (cdr from) (cdr to))))))
+    ))))
 
-(defun mb-region-pixel-width (from to)
+(defun mb-region-pixel-dimensions (from to)
   "Find a region's pixel width.
 If you need to find widths of multiple regions, you might want to use
  `mb-region-pixel-dimensions-multiple', as it will be faster."
-  (caar (mb-region-pixel-dimensions-multiple (list (cons from to)))))
-
-(defun mb-region-pixel-height (from to)
-  "Find a region's pixel height.
-If you need to find heights of multiple regions, you might want to use
- `mb-region-pixel-dimensions-multiple', as it will be faster."
-  (cdar (mapcar 'cdr (mb-region-pixel-dimensions-multiple (list (cons from to))))))
+  (car (mb-region-pixel-dimensions-multiple (list (cons from to)))))
 
 (defun mb-align-variable-width-internal (spec-func)
   (save-excursion
     (goto-char (line-beginning-position))
     (let* (( pixel-width
-             (mb-region-pixel-width
-              (point)
-              (line-end-position)))
+             (car
+              (mb-region-pixel-dimensions
+               (point)
+               (line-end-position))))
            ;; There is an off-by one bug. When word-wrap is enabled, the line will
            ;; break. That's why I substract one pixel in the end. This will show
            ;; up as a single empty character on terminals.
@@ -200,7 +199,7 @@ If you need to find heights of multiple regions, you might want to use
    (lambda (pixel-width)
      `(space :align-to (- right (,pixel-width) (1))))))
 
-;;; Helpers --------------------------------------------------------------------
+;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
 
 (defvar mb-sections nil)
@@ -269,7 +268,7 @@ If you need to find heights of multiple regions, you might want to use
      (delete-char -3)
      (insert "\n\n")))
 
-;; -----------------------------------------------------------------------------
+;;; * Sections ------------------------------------------------------------------
 
 (mb-section "Horizontal line"
   "The point-entered property prevents the point from staying on that location,
@@ -445,6 +444,23 @@ Nam vestibulum accumsan nisl."
                           'display '(space :width (2)))
               " More text"
               "\n"))))
+
+;; -----------------------------------------------------------------------------
+
+(mb-section "Center horizontally and vertically"
+  (insert-button "Show in new buffer"
+                 'action (lambda (e)
+                           (switch-to-buffer
+                            (get-buffer-create
+                             "*magic-buffer-hv-centering*"))
+                           (let ((inhibit-read-only t))
+                             (erase-buffer)
+                             (insert "test")
+                             (mb-center-line-variable-width))
+                           (unless view-mode
+                             (view-mode 1))
+                           ))
+  )
 
 ;; -----------------------------------------------------------------------------
 
@@ -679,12 +695,14 @@ was made to improve the situation, but it makes things worse on occasion."
         (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
           (cl-destructuring-bind (number name doc function) section
             (insert "\n\n")
-            (insert (propertize (format "%s. %s:\n" number name)
-                                'face 'info-title-3))
+            (insert (propertize
+                     (format "%s. %s:\n" number name)
+                     'face 'info-title-3))
             (if doc
                 (mb-insert-filled
-                 (propertize (format "%s\n\n" doc)
-                             'face 'font-lock-comment-face))
+                 (propertize
+                  (format "%s\n\n" doc)
+                  'face 'font-lock-comment-face))
                 (insert "\n"))
             (funcall function)
             (goto-char (point-max))
@@ -697,4 +715,12 @@ was made to improve the situation, but it makes things worse on occasion."
     (switch-to-buffer buf)))
 
 (provide 'magic-buffer)
+
+;; Local Variables:
+;; lexical-binding: t
+;; truncate-lines: nil
+;; eval: (orgstruct-mode 1)
+;; orgstruct-heading-prefix-regexp: "^;;; \\*+"
+;; End:
+
 ;;; magic-buffer.el ends here
