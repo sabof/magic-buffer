@@ -1,4 +1,4 @@
-;;; magic-buffer.el ---
+;;; magic-buffer.el --- -*- lexical-binding: t -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/magic-buffer
@@ -128,33 +128,43 @@ fallbacks, if needed."
   (apply 'format "#%02X%02X%02X"
          (mapcar 'random (make-list 3 255))))
 
+(defmacro mb-with-adjusted-enviroment (&rest body)
+  (declare (indent defun))
+  `(if (get 'mb-with-adjusted-enviroment 'active)
+       (progn
+         ,@body)
+       (save-excursion
+         (save-window-excursion
+           (delete-other-windows)
+           (unless (eq (current-buffer) (window-buffer))
+             (set-window-buffer nil (current-buffer)))
+           (put 'mb-with-adjusted-enviroment 'active t)
+           ,@body))))
+
+(defun mb-posn-at-point (&optional pos)
+  (unless pos
+    (setq pos (point)))
+  (mb-with-adjusted-enviroment
+    (goto-char pos)
+    (or (nth 2 (posn-at-point pos))
+        (progn
+          (goto-char (line-beginning-position))
+          (set-window-start nil (point))
+          (goto-char pos)
+          (nth 2 (posn-at-point pos))))))
+
 (defun mb-region-pixel-dimensions-multiple (alist)
   (let* (( alist (copy-tree alist))
-         ( sorted-alist (cl-sort (copy-sequence alist)
-                                 '< :key 'car))
-         ( position-x
-           (lambda (pos)
-             (goto-char pos)
-             (or (nth 2 (posn-at-point pos))
-                 (progn
-                   (goto-char (line-beginning-position))
-                   (set-window-start nil (point))
-                   (goto-char pos)
-                   (nth 2 (posn-at-point pos))))))
+         ( sorted-alist
+           (cl-sort (copy-sequence alist) '< :key 'car))
          before after)
-    (save-excursion
-      (save-window-excursion
-        (delete-other-windows)
-        (unless (eq (current-buffer) (window-buffer))
-          (set-window-buffer nil (current-buffer)))
-        (cl-loop for cons in sorted-alist
-                 collecting
-                 (progn
-                   (setq to (funcall position-x to)
-                     from (funcall position-x from))
-               (cons (abs (- (car from) (car to)))
-                     (abs (- (cdr from) (cdr to))))))
-    ))))
+    (mb-with-adjusted-enviroment
+      (cl-loop for cons in sorted-alist
+               with to = (mb-posn-at-point (car cons))
+               with from = (mb-posn-at-point (cdr cons))
+               do (progn (setcar cons (abs (- (car from) (car to))))
+                         (setcdr cons (abs (- (cdr from) (cdr to)))))
+               finally return alist))))
 
 (defun mb-region-pixel-dimensions (from to)
   "Find a region's pixel width.
@@ -319,8 +329,8 @@ the type of display (Graphical, tty, \"full color\" tty)."
    (info "(elisp) Overlay Properties"))
   (let (( text "This text will have a different background color in each \
   window it is displayed")
-        (window-list (list 'window-list))
-        (point-a (point))
+        ( window-list (list 'window-list))
+        ( point-a (point))
         point-b)
     (insert text)
     (setq point-b (point))
@@ -717,7 +727,6 @@ was made to improve the situation, but it makes things worse on occasion."
 (provide 'magic-buffer)
 
 ;; Local Variables:
-;; lexical-binding: t
 ;; truncate-lines: nil
 ;; eval: (orgstruct-mode 1)
 ;; orgstruct-heading-prefix-regexp: "^;;; \\*+"
