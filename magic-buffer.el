@@ -321,7 +321,7 @@ the type of display (Graphical, tty, \"full color\" tty)."
 
 (mb-section "Aligning fixed width text"
   "The alignment will persist on window resizing, unless the window is narrower
- than the text."
+than the text."
   ;; (info "(elisp) Pixel Specification")
   (let* (( text-lines (split-string "Lorem ipsum dolor sit amet
 Sed bibendum
@@ -360,10 +360,10 @@ Phasellus at dui in ligula mollis ultricies"
 
 (mb-section "Aligning variable width text"
   "Won't work should any of the text-lines be wider that the frame, at
- the moment of creation. Will also break, should the size of
- frame's text change. Generating the text properties is a lot slower
- than for fixed-width fonts. There might be a better way to do
- right alignement, using bidi text support."
+the moment of creation. Will also break, should the size of
+frame's text change. Generating the text properties is a lot slower
+than for fixed-width fonts. There might be a better way to do
+right alignement, using bidi text support."
   ;; (info "(elisp) Pixel Specification")
   (let (( paragraphs "Lorem ipsum dolor
 Pellentesque dapibus ligula
@@ -395,10 +395,10 @@ Curabitur vulputate vestibulum lorem"))
 
 (mb-section "Re-align after variable-width font lines"
   "Similar to what `fill-column-indicator' does. A similar effect
- can be achieved by setting `tab-width' to a large number, and
- splitting columns with tabs, but this will affect tabs in the
- whole buffer. The red line will move further to the right,
- should the preceeding text be long."
+can be achieved by setting `tab-width' to a large number, and
+splitting columns with tabs, but this will affect tabs in the
+whole buffer. The red line will move further to the right,
+should the preceeding text be long."
   (let* (( sentances (split-string
                       "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
 Donec hendrerit tempor tellus.
