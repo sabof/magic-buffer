@@ -113,10 +113,10 @@ fallbacks, if needed."
           (setq end-pos (point))
           (goto-char start-pos)
           (let (( regions
-                  (mb-region-pixel-width-multiple
-                   (cl-loop while (< (point) end-pos)
-                            collecting (cons (point) (line-end-position))
-                            until (cl-plusp (forward-line))))))
+                  (mapcar 'car (mb-region-pixel-dimensions-multiple
+                                (cl-loop while (< (point) end-pos)
+                                         collecting (cons (point) (line-end-position))
+                                         until (cl-plusp (forward-line)))))))
             (cl-assert (cl-every (apply-partially '= (car regions))
                                  regions)))
           (goto-char end-pos))
@@ -127,19 +127,16 @@ fallbacks, if needed."
   (apply 'format "#%02X%02X%02X"
          (mapcar 'random (make-list 3 255))))
 
-(defun mb-region-pixel-width-multiple (alist)
-  "Like `mb-region-pixel-width', but for multiple regions.
-Takes an ALIST of format \(\(BEGINNING . END\) ... \) as an argument,
-returns a list of lengths"
+(defun mb-region-pixel-dimensions-multiple (alist)
   (let (( position-x
           (lambda (pos)
             (goto-char pos)
-            (or (car (nth 2 (posn-at-point pos)))
+            (or (nth 2 (posn-at-point pos))
                 (progn
                   (goto-char (line-beginning-position))
                   (set-window-start nil (point))
                   (goto-char pos)
-                  (car (nth 2 (posn-at-point pos)))))))
+                  (nth 2 (posn-at-point pos))))))
         before after)
     (save-excursion
       (save-window-excursion
@@ -147,15 +144,25 @@ returns a list of lengths"
         (unless (eq (current-buffer) (window-buffer))
           (set-window-buffer nil (current-buffer)))
         (cl-loop for (from . to) in alist
-                 collecting (abs (- (funcall position-x from)
-                                    (funcall position-x to))))
+                 collecting
+                 (progn
+                   (setq to (funcall position-x to)
+                         from (funcall position-x from))
+                   (cons (abs (- (car from) (car to)))
+                         (abs (- (cdr from) (cdr to))))))
         ))))
 
 (defun mb-region-pixel-width (from to)
   "Find a region's pixel width.
 If you need to find widths of multiple regions, you might want to use
- `mb-region-pixel-width-multiple', as it will be faster."
-  (car (mb-region-pixel-width-multiple (list (cons from to)))))
+ `mb-region-pixel-dimensions-multiple', as it will be faster."
+  (caar (mb-region-pixel-dimensions-multiple (list (cons from to)))))
+
+(defun mb-region-pixel-height (from to)
+  "Find a region's pixel height.
+If you need to find heights of multiple regions, you might want to use
+ `mb-region-pixel-dimensions-multiple', as it will be faster."
+  (cdar (mapcar 'cdr (mb-region-pixel-dimensions-multiple (list (cons from to))))))
 
 (defun mb-align-variable-width-internal (spec-func)
   (save-excursion
@@ -561,6 +568,7 @@ make new ones is to use an external package called `fringe-helper'.")
 (mb-section "Pointer shapes"
   (mb-insert-info-links
    (info "(elisp) Pointer Shape"))
+
   (mb-comment "Hover with your mouse over the labels to change the pointer.
 For some reason doesn't work when my .emacs is loaded.")
   (mapc (lambda (pointer-sym)
@@ -638,9 +646,9 @@ was made to improve the situation, but it makes things worse on occasion."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Widgets"
-  (insert-text-button "Click me" 'action
-                      (lambda (event)
-                        (message "Button clicked"))))
+  (insert-button "Click me" 'action
+                 (lambda (event)
+                   (message "Button clicked"))))
 
 ;; -----------------------------------------------------------------------------
 
