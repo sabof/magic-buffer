@@ -451,7 +451,7 @@ A table of unicode box characters can be found in the source code."
     ;; In an application, especially one that where the content changes
     ;; frequently, it would probably be better to determine whether all used
     ;; table characters have equal width with letters once, and then use them or
-    ;; ASCII accoringly. This would be noticably faster.
+    ;; ASCII accordingly. This would be noticably faster.
 
     (mb-table-insert table1)
     (mb-table-insert table2)
@@ -512,34 +512,13 @@ make new ones is to use an external package called `fringe-helper'."
   "Hover with your mouse over the labels to change the pointer.
 For some reason doesn't work when my .emacs is loaded."
   ;; (info "(elisp) Pointer Shape")
-  (insert (propertize "text"
-                      'pointer 'text
-                      'face '(:background "Purple"))
-          "\n\n"
-          (propertize "arrow"
-                      'pointer 'arrow
-                      'face '(:background "Purple"))
-          "\n\n"
-          (propertize "hand"
-                      'pointer 'hand
-                      'face '(:background "Purple"))
-          "\n\n"
-          (propertize "vdrag"
-                      'pointer 'vdrag
-                      'face '(:background "Purple"))
-          "\n\n"
-          (propertize "hdrag"
-                      'pointer 'hdrag
-                      'face '(:background "Purple"))
-          "\n\n"
-          (propertize "modeline"
-                      'pointer 'modeline
-                      'face '(:background "Purple"))
-          "\n\n"
-          (propertize "hourglass"
-                      'pointer 'hourglass
-                      'face '(:background "Purple"))
-          "\n\n"))
+  (mapc (lambda (pointer-sym)
+          (insert (propertize
+                   (symbol-name pointer-sym)
+                   'pointer pointer-sym
+                   'face '(:background "Purple"))
+                  "\n\n"))
+        '(text arrow hand vdrag hdrag modeline hourglass)))
 
 ;; -----------------------------------------------------------------------------
 
