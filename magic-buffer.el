@@ -130,16 +130,21 @@ fallbacks, if needed."
 
 (defmacro mb-with-adjusted-enviroment (&rest body)
   (declare (indent defun))
+  ;; I could just save the scroll position, if the buffer is visible in the
+  ;; selected window. It migth be a tiny bit faster.
   `(if (get 'mb-with-adjusted-enviroment 'active)
-       (progn
+       (save-excursion
          ,@body)
        (save-excursion
          (save-window-excursion
-           (delete-other-windows)
+           ;; (delete-other-windows)
            (unless (eq (current-buffer) (window-buffer))
              (set-window-buffer nil (current-buffer)))
-           (put 'mb-with-adjusted-enviroment 'active t)
-           ,@body))))
+           (unwind-protect
+               (progn
+                 (put 'mb-with-adjusted-enviroment 'active t)
+                 ,@body)
+             (put 'mb-with-adjusted-enviroment 'active nil))))))
 
 (defun mb-posn-at-point (&optional pos)
   (unless pos
@@ -167,47 +172,66 @@ fallbacks, if needed."
                finally return alist))))
 
 (defun mb-region-pixel-dimensions (from to)
-  "Find a region's pixel width.
-If you need to find widths of multiple regions, you might want to use
- `mb-region-pixel-dimensions-multiple', as it will be faster."
-  (car (mb-region-pixel-dimensions-multiple (list (cons from to)))))
+  "Find a region's pixel "
+  (let (( from (mb-posn-at-point from))
+        ( to (mb-posn-at-point to)))
+    (cons (abs (- (car from) (car to)))
+          (abs (- (cdr from) (cdr to))))))
 
-(defun mb-align-variable-width-internal (spec-func)
-  (save-excursion
-    (goto-char (line-beginning-position))
-    (let* (( pixel-width
-             (car
-              (mb-region-pixel-dimensions
-               (point)
-               (line-end-position))))
-           ;; There is an off-by one bug. When word-wrap is enabled, the line will
-           ;; break. That's why I substract one pixel in the end. This will show
-           ;; up as a single empty character on terminals.
-           ( space-spec (funcall spec-func pixel-width)
-                        ))
-      (if (looking-at "[\t ]+")
-          (put-text-property (match-beginning 0) (match-end 0) 'display space-spec)
-          (put-text-property (line-beginning-position)
-                             (line-end-position)
-                             'line-prefix (propertize " " 'display space-spec)))
-      (goto-char (line-end-position))
-      (skip-chars-backward "\t ")
-      (when (looking-at "[\t ]+")
-        (put-text-property (match-beginning 0) (match-end 0)
-                           'invisible t))
+(defun es-window-inside-pixel-width (&optional window)
+  (setq window (window-normalize-window window))
+  (let (( window-pixel-edges (window-inside-pixel-edges)))
+    (- (nth 2 window-pixel-edges) (nth 0 window-pixel-edges))))
+
+(defun mb-align-variable-width-internal (&optional right)
+  (mb-with-adjusted-enviroment
+    (beginning-of-visual-line)
+    (let* (( end-of-visual-line
+             (save-excursion
+               (end-of-visual-line)
+               (point)))
+           ( region (list (point)
+                          (if (= (line-end-position) end-of-visual-line)
+                              (line-end-position)
+                              (max (point-min) (1- end-of-visual-line)))))
+           ( pixel-width (car (apply 'mb-region-pixel-dimensions region)))
+           ( space-spec (if right
+                            ;; Full-width lines will break, when word-wrap is enabled. That's why I
+                            ;; substract one pixel in the end. See:
+                            ;; http://debbugs.gnu.org/cgi/bugreport.cgi?2749
+                            `(space :align-to (- right (,pixel-width) (1)))
+                            `(space :align-to (- center (,(/ pixel-width 2)))))))
+      (if (= (point) (line-beginning-position))
+          (if (looking-at "[\t ]+")
+              (put-text-property
+               (match-beginning 0)
+               (match-end 0)
+               'display space-spec)
+              (put-text-property
+               (line-beginning-position)
+               (line-end-position)
+               'line-prefix (propertize " " 'display space-spec)))
+          (if (looking-at "[\t ]+") ; in the middle of a logical line
+              (if right
+                  (put-text-property
+                   (match-beginning 0)
+                   (match-end 0)
+                   'display space-spec)
+                  (put-text-property
+                   (match-beginning 0)
+                   (match-end 0)
+                   'display
+                   `(space :width (,(/ (- (es-window-pixel-width)
+                                          pixel-width)
+                                       2)))
+                   ))
+              (put-text-property
+               (1- (point))
+               (min (1+ (point)) (point-max))
+               'wrap-prefix (propertize " " 'display space-spec))))
+      ;; Frame width 65
+      pixel-width
       )))
-
-(defun mb-center-line-variable-width ()
-  "Only modifies the properties, not the text."
-  (mb-align-variable-width-internal
-   (lambda (pixel-width)
-     `(space :align-to (- center (,(/ pixel-width 2)))))))
-
-(defun mb-flush-line-right-variable-width ()
-  "Only modifies the properties, not the text."
-  (mb-align-variable-width-internal
-   (lambda (pixel-width)
-     `(space :align-to (- right (,pixel-width) (1))))))
 
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
@@ -397,20 +421,24 @@ the moment of creation. Will also break, should the size of
 frame's text change. Generating the text properties is a lot slower
 than for fixed-width fonts. There might be a better way to do
 right alignement, using bidi text support.")
-  (let (( paragraphs "Lorem ipsum dolor
+  (let* (( paragraphs "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
-Curabitur vulputate vestibulum lorem"))
+Curabitur vulputate vestibulum lorem")
+         end)
     (mb-subsection-header "Center")
-    (cl-loop for text in (split-string paragraphs "\n")
-             for height = 2.0 then (- height 0.4)
-             do (let (( ori-point (point))
-                      ( face-spec  `(:inherit variable-pitch :height ,height)))
-                  (insert (propertize text 'face face-spec))
-                  ;; (goto-char ori-point)
-                  (mb-center-line-variable-width)
-                  (insert "\n")
-                  ))
+    (save-excursion
+      (cl-loop for text in (split-string paragraphs "\n")
+               for height = 2.0 then (- height 0.4)
+               for face-spec = `(:inherit variable-pitch :height ,height)
+               do (insert (propertize text 'face face-spec) "\n"))
+      (setq end (point)))
+    (cl-loop while (< (point) end)
+             do
+             (mb-align-variable-width-internal)
+             ;; (mb-center-line-variable-width)
+             (unless (plusp (vertical-motion 1))
+               (return)))
     (mb-subsection-header "Right")
     (cl-loop for text in (split-string paragraphs "\n")
              for height = 1.0 then (+ height 0.4)
