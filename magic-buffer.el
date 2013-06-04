@@ -105,10 +105,7 @@ fallbacks, if needed."
                    (cl-assert (char-displayable-p char)))
           (insert (propertize
                    string
-                   'face '(:height
-                           2.0
-                           :family "DejaVu Sans Mono"
-                           )
+                   'face '(:height 2.0 :family "DejaVu Sans Mono")
                    ))
           (setq end-pos (point))
           (goto-char start-pos)
@@ -183,10 +180,11 @@ fallbacks, if needed."
   (let (( window-pixel-edges (window-inside-pixel-edges)))
     (- (nth 2 window-pixel-edges) (nth 0 window-pixel-edges))))
 
-(defun mb-align-variable-width-internal (&optional right)
+(defun mb-align-variable-width (&optional right)
   (mb-with-adjusted-enviroment
     (beginning-of-visual-line)
-    (let* (( end-of-visual-line
+    (let* (( beginning-of-visual-line)
+           ( end-of-visual-line
              (save-excursion
                (end-of-visual-line)
                (point)))
@@ -196,8 +194,9 @@ fallbacks, if needed."
                               (max (point-min) (1- end-of-visual-line)))))
            ( pixel-width (car (apply 'mb-region-pixel-dimensions region)))
            ( space-spec (if right
-                            ;; Full-width lines will break, when word-wrap is enabled. That's why I
-                            ;; substract one pixel in the end. See:
+                            ;; Full-width lines will break, when word-wrap is
+                            ;; enabled. That's why I substract one pixel in the
+                            ;; end. See:
                             ;; http://debbugs.gnu.org/cgi/bugreport.cgi?2749
                             `(space :align-to (- right (,pixel-width) (1)))
                             `(space :align-to (- center (,(/ pixel-width 2)))))))
@@ -211,25 +210,31 @@ fallbacks, if needed."
                (line-beginning-position)
                (line-end-position)
                'line-prefix (propertize " " 'display space-spec)))
-          (if (looking-at "[\t ]+") ; in the middle of a logical line
+          (if (looking-at "[\t ]+")     ; in the middle of a logical line
+              ;; In some cases, when a line is almost equal to the window's
+              ;; width, and it ends with an align-to spec, it will belong to the
+              ;; next line, while being centered to the previous, resulting in
+              ;; that character's disappearance.
+              ;;
+              ;; Or something like that. Might try to reproduce it later.
               (if right
                   (put-text-property
                    (match-beginning 0)
                    (match-end 0)
-                   'display space-spec)
+                   'display
+                   `(space :width (,(- (es-window-pixel-width) pixel-width))))
                   (put-text-property
                    (match-beginning 0)
                    (match-end 0)
                    'display
-                   `(space :width (,(/ (- (es-window-pixel-width)
-                                          pixel-width)
-                                       2)))
-                   ))
+                   `(space :width (,(/ (- (es-window-pixel-width) pixel-width)
+                                       2)))))
               (put-text-property
                (1- (point))
                (min (1+ (point)) (point-max))
                'wrap-prefix (propertize " " 'display space-spec))))
       ;; Frame width 65
+      ;; (error "test")
       pixel-width
       )))
 
@@ -433,12 +438,20 @@ Curabitur vulputate vestibulum lorem")
                for face-spec = `(:inherit variable-pitch :height ,height)
                do (insert (propertize text 'face face-spec) "\n"))
       (setq end (point)))
-    (cl-loop while (< (point) end)
-             do
-             (mb-align-variable-width-internal)
-             ;; (mb-center-line-variable-width)
-             (unless (plusp (vertical-motion 1))
-               (return)))
+    ;; (vertical-motion) seems to misbehave when
+    ;;
+    ;;     (not (eq (current-buffer) (window-buffer)))
+    ;;
+    ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
+    ;; also reduces multiple (save-window-excurson) s to one.
+    (mb-with-adjusted-enviroment
+      (cl-loop while (< (point) end)
+               do
+               (mb-align-variable-width)
+               (unless (plusp (vertical-motion 1))
+                 (return))))
+
+    (goto-char (point-max))
     (mb-subsection-header "Right")
     (cl-loop for text in (split-string paragraphs "\n")
              for height = 1.0 then (+ height 0.4)
@@ -446,10 +459,13 @@ Curabitur vulputate vestibulum lorem")
                       ( face-spec  `(:inherit variable-pitch :height ,height)))
                   (insert (propertize text 'face face-spec))
                   ;; (goto-char ori-point)
-                  (mb-flush-line-right-variable-width)
+                  (mb-align-variable-width 'right)
                   (insert "\n")
                   ))
-    ))
+    ;; Fails with
+    ;; (set-frame-width nil 52)
+    )
+  )
 
 ;; -----------------------------------------------------------------------------
 
