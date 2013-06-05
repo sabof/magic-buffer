@@ -195,7 +195,7 @@ fallbacks, if needed."
                               ;; FIXME: This makes the line one char narrower than it is
                               (max (point-min) (1- end-of-visual-line)))))
            ( pixel-width (car (apply 'mb-region-pixel-dimensions region)))
-           ( space-spec (if right
+           ( align-spec (if right
                             ;; Full-width lines will break, when word-wrap is
                             ;; enabled. That's why I substract one pixel in the
                             ;; end. See:
@@ -207,11 +207,11 @@ fallbacks, if needed."
               (put-text-property
                (match-beginning 0)
                (match-end 0)
-               'display space-spec)
+               'display align-spec)
               (put-text-property
                (line-beginning-position)
                (line-end-position)
-               'line-prefix (propertize " " 'display space-spec)))
+               'line-prefix (propertize " " 'display align-spec)))
           (if (looking-at "[\t ]+")     ; in the middle of a logical line
               ;; In some cases, when a line is almost equal to the window's
               ;; width, and it ends with an align-to spec, it will belong to the
@@ -234,27 +234,66 @@ fallbacks, if needed."
               (put-text-property
                (1- (point))
                (min (1+ (point)) (point-max))
-               'wrap-prefix (propertize " " 'display space-spec))))
+               'wrap-prefix (propertize " " 'display align-spec))))
       ;; Frame width 65
       ;; (error "test")
       pixel-width
       )))
 
+(defun mb-delete-subsequence (from to list)
+  (let (( after-to (nthcdr to list)))
+    (if (zerop from)
+        after-to
+        (progn
+          (setcdr (nthcdr (1- from) list) after-to)
+          list))))
 
-(defun mb-make-grid (outer-margins inner-borders columns-number metalist)
-  (let (( cell-spec `(,(/ 1.0 columns-number)
-                      . (- right (outer-margins . 2)
-                           (inner-borders . (- column-number 1))))))
-    (cl-dolist (list metalist)
+(defun mb-plist-remove-key (key plist)
+  (let ((pos (cl-position key plist)))
+    (if pos
+        (mb-delete-subsequence
+         pos (+ 2 pos) plist)
+        plist)))
+
+(defun mb-make-grid (outer-margins inner-borders columns-number rows)
+  (let ((insert-border
+         (lambda ()
+           (insert (propertize " "
+                               'display `(space :width ,inner-borders)
+                               )))))
+    (cl-dolist (row rows)
       (insert (propertize " " 'display `(space :align-to ,outer-margins)))
-      (cl-dolist (string (butlast metalist))
-        (insert (propertize string 'display
-                            (nconc '(:align-to ,cell-spec)
-                                   (get-text-property 0 'display string))
-                            )))
-      (insert (propertize (car (last list))
-                          'display `(space :align-to (- right ,outer-margins))))
+      (cl-loop for string in (butlast row)
+               for iter = 0 then (1+ iter)
+               for width-spec = (or ;; 15
+                                 `(right . ,(/ 1.0 columns-number))
+                                 `(,(/ 1.0 columns-number)
+                                   . (- right
+                                        (,outer-margins . 2)
+                                        (inner-borders . ,(1- columns-number)))))
+               for align-spec = `(+ ,outer-margins
+                                    (iter . ,inner-borders)
+                                    (,(1+ iter) . ,width-spec))
+               do
+               (unless (zerop iter)
+                 (funcall insert-border))
+               (insert
+                string
+                (apply 'propertize " "
+                       ;; 'display `(space :align-to ,align-spec)
+                       'display `(space :align-to ,width-spec)
+                       (mb-plist-remove
+                        'display (text-properties-at 0 string)))))
+      (funcall insert-border)
+      (insert (car (last row))
+              (apply 'propertize " "
+                     'display `(space :align-to (- right ,outer-margins))
+                     (mb-plist-remove
+                      'display (text-properties-at
+                                0 (car (last row)))))
+              "\n")
       )))
+
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
 
@@ -342,25 +381,33 @@ since that would change the color of the line."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Stipples"
-  (let ((margin 5)
-        (grid-strings))
+  (let (grid-strings stipple-names)
     (cl-dolist (dir x-bitmap-file-path)
-      (cl-dolist (name (remove-if (lambda (file) (member file '(".." ".")))
-                                  (directory-files dir)))
-        (push (propertize " " )
+      (setq stipple-names
+            (nconc
+             stipple-names
+             (remove-if (lambda (file) (member file '(".." ".")))
+                        (directory-files dir)))))
+    (while stipple-names
+      (let* (( current-batch
+               (list (pop stipple-names)
+                     (pop stipple-names)
+                     (pop stipple-names))))
+        (push (cl-substitute " " nil current-batch)
               grid-strings)
-        (insert "\n"
-                (make-string margin ?\s )
-                name
-                "\n"
-                (make-string margin ?\s )
-                (propertize " "
-                            'face `(:inherit
-                                    font-lock-comment-face
-                                    :stipple ,name)
-                            'display `(space :align-to (- right ,margin)))
-                (propertize "\n" 'line-height 32)
-                )))))
+        (push (mapcar (lambda (stipple)
+                        (if (not stipple)
+                            " "
+                            (propertize " "
+                                        'face
+                                        `(:inherit
+                                          font-lock-comment-face
+                                          :stipple ,stipple))))
+                      current-batch)
+              grid-strings)))
+    (setq grid-strings (nreverse grid-strings))
+    (setq tmp grid-strings)
+    (mb-make-grid 4 2 3 grid-strings)))
 
 ;; -----------------------------------------------------------------------------
 
