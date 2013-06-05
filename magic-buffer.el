@@ -255,44 +255,26 @@ fallbacks, if needed."
          pos (+ 2 pos) plist)
         plist)))
 
-(defun mb-make-grid (outer-margins inner-borders columns-number rows)
-  (let ((insert-border
-         (lambda ()
-           (insert (propertize " "
-                               'display `(space :width ,inner-borders)
-                               )))))
-    (cl-dolist (row rows)
-      (insert (propertize " " 'display `(space :align-to ,outer-margins)))
-      (cl-loop for string in (butlast row)
-               for iter = 0 then (1+ iter)
-               for width-spec = (or ;; 15
-                                 `(right . ,(/ 1.0 columns-number))
-                                 `(,(/ 1.0 columns-number)
-                                   . (- right
-                                        (,outer-margins . 2)
-                                        (inner-borders . ,(1- columns-number)))))
-               for align-spec = `(+ ,outer-margins
-                                    (iter . ,inner-borders)
-                                    (,(1+ iter) . ,width-spec))
-               do
-               (unless (zerop iter)
-                 (funcall insert-border))
-               (insert
-                string
-                (apply 'propertize " "
-                       ;; 'display `(space :align-to ,align-spec)
-                       'display `(space :align-to ,width-spec)
-                       (mb-plist-remove
-                        'display (text-properties-at 0 string)))))
-      (funcall insert-border)
-      (insert (car (last row))
-              (apply 'propertize " "
-                     'display `(space :align-to (- right ,outer-margins))
-                     (mb-plist-remove
-                      'display (text-properties-at
-                                0 (car (last row)))))
-              "\n")
-      )))
+(defun mb-show-in-two-columns (outer-margins inner-border rows)
+  (cl-dolist (row rows)
+    (insert (propertize " " 'display `(space :align-to ,outer-margins))
+            (car row)
+            (apply 'propertize " "
+                   'display `(space :align-to (- center (,inner-border . 0.5)))
+                   (mb-plist-remove
+                    'display (text-properties-at
+                              0 (car row))))
+            (propertize " "
+                        'display `(space :width ,inner-border)
+                        )
+            (nth 1 row)
+            (apply 'propertize " "
+                   'display `(space :align-to (- right ,outer-margins))
+                   (mb-plist-remove
+                    'display (text-properties-at
+                              0 (nth 1 row))))
+            (apply 'propertize "\n" (car (last row))))
+    ))
 
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
@@ -393,21 +375,23 @@ since that would change the color of the line."
                (list (pop stipple-names)
                      (pop stipple-names)
                      (pop stipple-names))))
-        (push (cl-substitute " " nil current-batch)
+        (push (nconc (cl-substitute " " nil current-batch)
+                     (list (list 'line-height 2.0)))
               grid-strings)
-        (push (mapcar (lambda (stipple)
-                        (if (not stipple)
-                            " "
-                            (propertize " "
-                                        'face
-                                        `(:inherit
-                                          font-lock-comment-face
-                                          :stipple ,stipple))))
-                      current-batch)
+        (push (nconc (mapcar (lambda (stipple)
+                               (if (not stipple)
+                                   " "
+                                   (propertize " "
+                                               'face
+                                               `(:inherit
+                                                 font-lock-comment-face
+                                                 :stipple ,stipple))))
+                             current-batch)
+                     (list (list 'line-height 2.0)))
               grid-strings)))
     (setq grid-strings (nreverse grid-strings))
     (setq tmp grid-strings)
-    (mb-make-grid 4 2 3 grid-strings)))
+    (mb-show-in-two-columns 4 2 grid-strings)))
 
 ;; -----------------------------------------------------------------------------
 
