@@ -182,6 +182,7 @@ fallbacks, if needed."
 
 (defun mb-align-variable-width (&optional right)
   (mb-with-adjusted-enviroment
+    ;; Add protection against negative aligmnets
     (beginning-of-visual-line)
     (let* (( beginning-of-visual-line)
            ( end-of-visual-line
@@ -191,6 +192,7 @@ fallbacks, if needed."
            ( region (list (point)
                           (if (= (line-end-position) end-of-visual-line)
                               (line-end-position)
+                              ;; FIXME: This makes the line one char narrower than it is
                               (max (point-min) (1- end-of-visual-line)))))
            ( pixel-width (car (apply 'mb-region-pixel-dimensions region)))
            ( space-spec (if right
@@ -238,6 +240,21 @@ fallbacks, if needed."
       pixel-width
       )))
 
+
+(defun mb-make-grid (outer-margins inner-borders columns-number metalist)
+  (let (( cell-spec `(,(/ 1.0 columns-number)
+                      . (- right (outer-margins . 2)
+                           (inner-borders . (- column-number 1))))))
+    (cl-dolist (list metalist)
+      (insert (propertize " " 'display `(space :align-to ,outer-margins)))
+      (cl-dolist (string (butlast metalist))
+        (insert (propertize string 'display
+                            (nconc '(:align-to ,cell-spec)
+                                   (get-text-property 0 'display string))
+                            )))
+      (insert (propertize (car (last list))
+                          'display `(space :align-to (- right ,outer-margins))))
+      )))
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
 
@@ -321,6 +338,29 @@ since that would change the color of the line."
                              (if (< old new) 1 -1)))
            ))
   (insert "\n"))
+
+;; -----------------------------------------------------------------------------
+
+(mb-section "Stipples"
+  (let ((margin 5)
+        (grid-strings))
+    (cl-dolist (dir x-bitmap-file-path)
+      (cl-dolist (name (remove-if (lambda (file) (member file '(".." ".")))
+                                  (directory-files dir)))
+        (push (propertize " " )
+              grid-strings)
+        (insert "\n"
+                (make-string margin ?\s )
+                name
+                "\n"
+                (make-string margin ?\s )
+                (propertize " "
+                            'face `(:inherit
+                                    font-lock-comment-face
+                                    :stipple ,name)
+                            'display `(space :align-to (- right ,margin)))
+                (propertize "\n" 'line-height 32)
+                )))))
 
 ;; -----------------------------------------------------------------------------
 
