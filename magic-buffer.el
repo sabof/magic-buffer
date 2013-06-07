@@ -846,8 +846,8 @@ make new ones is to use an external package called `fringe-helper'.")
 (mb-section "Pointer shapes"
   (mb-insert-info-links
    (info "(elisp) Pointer Shape"))
-
   (mb-comment "Hover with your mouse over the labels to change the pointer.")
+  (insert "\n")
   (mapc (lambda (pointer-sym)
           (insert (propertize
                    (symbol-name pointer-sym)
