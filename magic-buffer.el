@@ -365,6 +365,9 @@ undo history is important."
 (defvar mb-counter 1)
 (setq mb-counter 1)
 
+(defvar mb--exclusive-section nil
+  "Only show the section with a particular number.
+Created to ease development.")
 (defvar mb-expamle-image
   (or (and load-file-name
            (file-exists-p
@@ -844,8 +847,7 @@ make new ones is to use an external package called `fringe-helper'.")
   (mb-insert-info-links
    (info "(elisp) Pointer Shape"))
 
-  (mb-comment "Hover with your mouse over the labels to change the pointer.
-For some reason doesn't work when my .emacs is loaded.")
+  (mb-comment "Hover with your mouse over the labels to change the pointer.")
   (mapc (lambda (pointer-sym)
           (insert (propertize
                    (symbol-name pointer-sym)
@@ -951,7 +953,14 @@ was made to improve the situation, but it makes things worse on occasion."
          (propertize "If you want to see the source, do `M-x find-function magic-buffer'"
                      'face 'font-lock-comment-face))
         (insert "\n\n")
-        (cl-dolist (section (cl-sort (cl-copy-list mb-sections) '< :key 'car))
+        (cl-dolist (section (if mb--exclusive-section
+                                (cl-remove-if-not
+                                 (apply-partially
+                                  '= mb--exclusive-section)
+                                 mb-sections
+                                 :key 'car)
+                                (cl-sort (cl-copy-list mb-sections)
+                                         '< :key 'car)))
           (cl-destructuring-bind (number name doc function) section
             (insert "\n\n")
             (insert (propertize
