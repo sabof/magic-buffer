@@ -1,4 +1,4 @@
- ;;; magic-buffer.el --- -*- lexical-binding: t -*-
+;;; magic-buffer.el --- -*- lexical-binding: t -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/magic-buffer
