@@ -128,21 +128,19 @@ fallbacks, if needed."
 
 (defmacro mb-with-adjusted-enviroment (&rest body)
   (declare (indent defun))
-  ;; I could just save the scroll position, if the buffer is visible in the
-  ;; selected window. It migth be a tiny bit faster.
-  `(if (get 'mb-with-adjusted-enviroment 'active)
-       (save-excursion
-         ,@body)
-       (save-excursion
-         (save-window-excursion
-           ;; (delete-other-windows)
-           (unless (eq (current-buffer) (window-buffer))
-             (set-window-buffer nil (current-buffer)))
-           (unwind-protect
-               (progn
-                 (put 'mb-with-adjusted-enviroment 'active t)
-                 ,@body)
-             (put 'mb-with-adjusted-enviroment 'active nil))))))
+  `(save-excursion
+     (cond ( (get 'mb-with-adjusted-enviroment 'active)
+             ,@body)
+           ( (eq (current-buffer) (window-buffer))
+             (let (( initial-start (window-start)))
+               ad-do-it
+               (set-window-start nil inital-start)))
+           ( t (unwind-protect
+                   (save-window-excursion
+                     (set-window-buffer nil (current-buffer))
+                     (put 'mb-with-adjusted-enviroment 'active t)
+                     ,@body)
+                 (put 'mb-with-adjusted-enviroment 'active nil))))))
 
 (defun mb-posn-at-point (&optional pos)
   (unless pos
@@ -651,7 +649,7 @@ Curabitur vulputate vestibulum lorem")
     ;;     (not (eq (current-buffer) (window-buffer)))
     ;;
     ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
-    ;; also reduces multiple (save-window-excurson) s to one.
+    ;; also reduces multiple (save-window-excurson)s to one.
     (mb-with-adjusted-enviroment
       (cl-loop while (< (point) end)
                do
