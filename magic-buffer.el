@@ -265,7 +265,7 @@ fallbacks, if needed."
             (car row)
             (apply 'propertize " "
                    'display `(space :align-to (- center (,inner-border . 0.5)))
-                   (mb-plist-remove
+                   (mb-plist-remove-key
                     'display (text-properties-at
                               0 (car row))))
             (propertize " "
@@ -274,7 +274,7 @@ fallbacks, if needed."
             (nth 1 row)
             (apply 'propertize " "
                    'display `(space :align-to (- right ,outer-margins))
-                   (mb-plist-remove
+                   (mb-plist-remove-key
                     'display (text-properties-at
                               0 (nth 1 row))))
             (apply 'propertize "\n" (car (last row))))))
@@ -425,7 +425,7 @@ Created to ease development.")
                     (insert (propertize " | " 'face 'bold))))
                links)
      (delete-char -3)
-     (insert "\n\n")))
+     (insert "\n")))
 
 ;;; * Sections ------------------------------------------------------------------
 
@@ -446,15 +446,15 @@ since that would change the color of the line."
 
 (mb-section "Stipples / 2 columns / Line cursor"
   "Uses stipples that come with your unix distribution. I'll add
- a cutsom stipple example later. They have some re-drawing issues after scrolling."
+a cutsom stipple example later. They have some re-drawing issues after scrolling."
   (let ((ori-point (point))
         grid-strings stipple-names)
     (cl-dolist (dir x-bitmap-file-path)
       (setq stipple-names
             (nconc
              stipple-names
-             (remove-if (lambda (file) (member file '(".." ".")))
-                        (directory-files dir)))))
+             (cl-remove-if (lambda (file) (member file '(".." ".")))
+                           (directory-files dir)))))
     (setq stipple-names
           (sort stipple-names
                 (lambda (&rest ignore)
@@ -515,7 +515,7 @@ since that would change the color of the line."
                       ;; (put-text-property ori-point end-point 'no-op-prop (cl-incf counter))
                       ;; (put-text-property ori-point end-point 'face (cl-incf counter))
                       ;; (while (and (< (point) end-point)
-                      ;;             (plusp (forward-line)))
+                      ;;             (cl-plusp (forward-line)))
                       ;;   (insert (propertize " " 'invisible t) ))
                       ;; (insert " ")
                       ;; (delete-char -1)
@@ -535,7 +535,7 @@ since that would change the color of the line."
   (mb-insert-info-links
    (info "(elisp) Defining Faces")
    (info "(elisp) Display Feature Testing"))
-
+  (insert "\n")
   (defface mb-diff-terminal
     '(( ((type graphic))
         (:background "DarkRed"))
@@ -554,7 +554,7 @@ since that would change the color of the line."
 
   (mb-insert-filled
    (propertize "This text will have a different background, depending on \
-the type of display (Graphical, tty, \"full color\" tty)."
+   the type of display (Graphical, tty, \"full color\" tty)."
                'face 'mb-diff-terminal))
   (insert "\n"))
 
@@ -563,6 +563,7 @@ the type of display (Graphical, tty, \"full color\" tty)."
 (mb-section "Differentiate windows"
   (mb-insert-info-links
    (info "(elisp) Overlay Properties"))
+  (insert "\n")
   (let (( text "This text will have a different background color in each \
   window it is displayed")
         ( window-list (list 'window-list))
@@ -629,9 +630,9 @@ Phasellus at dui in ligula mollis ultricies"
   (mb-insert-info-links
    (info "(elisp) Pixel Specification"))
   (mb-comment "Will break, should the size of frame's text
- change. If there are line breaks, the lines won't align after a
- window resize. There might be a better way to do right
- alignement, using bidi text support. *WIP*")
+change. If there are line breaks, the lines won't align after a
+window resize. There might be a better way to do right
+alignement, using bidi text support. *WIP*")
   (let* (( paragraphs "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
@@ -654,7 +655,7 @@ Curabitur vulputate vestibulum lorem")
       (cl-loop while (< (point) end)
                do
                (mb-align-variable-width)
-               (unless (plusp (vertical-motion 1))
+               (unless (cl-plusp (vertical-motion 1))
                  (return))))
 
     (goto-char (point-max))
@@ -816,6 +817,7 @@ dolor sit amet, consectetuer adipiscing elit."
    (info "(elisp) Fringe Indicators"))
   (mb-comment "fringe-indicator-alist contains the default indicators. The easiest way to
 make new ones is to use an external package called `fringe-helper'.")
+  (insert "\n")
   (let (( insert-fringe-bitmap
           (lambda (symbol-name)
             (insert (propertize " " 'display
@@ -857,10 +859,11 @@ make new ones is to use an external package called `fringe-helper'.")
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Images"
-  "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
-was made to improve the situation, but it makes things worse on occasion."
-  ;; (info "(elisp) Showing Images")
-  ;; (info "(elisp) Image Descriptors")
+  (mb-insert-info-links
+   (info "(elisp) Showing Images")
+   (info "(elisp) Image Descriptors"))
+  (mb-comment "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
+was made to improve the situation, but it makes things worse on occasion.")
   (let (( image-size
           ;; For terminal displays
           (ignore-errors (image-size `(image :type jpeg
