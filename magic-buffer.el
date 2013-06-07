@@ -1,4 +1,4 @@
-;;; magic-buffer.el --- -*- lexical-binding: t -*-
+ ;;; magic-buffer.el --- -*- lexical-binding: t -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/magic-buffer
@@ -37,6 +37,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'color)
 (require 'info) ; For title faces
 
 ;;; * Library ------------------------------------------------------------------
@@ -175,10 +176,15 @@ fallbacks, if needed."
     (cons (abs (- (car from) (car to)))
           (abs (- (cdr from) (cdr to))))))
 
-(defun es-window-inside-pixel-width (&optional window)
+(defun mb-window-inside-pixel-width (&optional window)
   (setq window (window-normalize-window window))
   (let (( window-pixel-edges (window-inside-pixel-edges)))
     (- (nth 2 window-pixel-edges) (nth 0 window-pixel-edges))))
+
+(defun mb-window-inside-pixel-height (&optional window)
+  (setq window (window-normalize-window window))
+  (let (( window-pixel-edges (window-inside-pixel-edges)))
+    (- (nth 3 window-pixel-edges) (nth 1 window-pixel-edges))))
 
 (defun mb-align-variable-width (&optional right)
   (mb-with-adjusted-enviroment
@@ -273,8 +279,76 @@ fallbacks, if needed."
                    (mb-plist-remove
                     'display (text-properties-at
                               0 (nth 1 row))))
-            (apply 'propertize "\n" (car (last row))))
+            (apply 'propertize "\n" (car (last row))))))
+
+(defun mb-content-height ()
+  (let (added-newline)
+    (mb-with-adjusted-enviroment
+      (with-silent-modifications
+        (set-window-start nil (point-min))
+        (goto-char (point-max))
+        (unless (or (equal (char-before) ?\n )
+                    (= (point-min) (point-max)))
+          (insert "\n")
+          (setq added-newline t))
+        (prog1 (cdr (nth 2 (posn-at-point)))
+          (when added-newline
+            (delete-char -1)))
+        ))))
+
+(defvar mb-centerv nil)
+
+(cl-defun mb--recenterv-buffer (&rest ignore)
+  (let (content-height
+        ( window-height (mb-window-inside-pixel-height))
+        ( inhibit-read-only t)
+        ov)
+    (save-excursion
+      (mapc 'delete-overlay
+            (cl-remove-if-not
+             (lambda (ov)
+               (and (overlay-get ov 'mb-centerer)
+                    (eq (overlay-get ov 'window)
+                        (selected-window))))
+             (overlays-at (point-min))))
+      (unless (setq content-height (mb-content-height))
+        (cl-return-from mb--recenterv-buffer nil))
+      (unless (get-text-property (point-min) 'mb-centerer)
+        (with-silent-modifications
+          (goto-char (point-min))
+          (insert (propertize " " 'mb-centerer t ;; 'invisible t
+                              'rear-nonsticky '( ;; invisible
+                                                ;; read-only
+                                                mb-centerer)))))
+      (progn
+        (setq ov (make-overlay
+                  (point-min)
+                  (min (point-max)
+                       (1+ (point-min)))))
+        (overlay-put ov 'mb-centerer t)
+        (overlay-put ov 'read-only t)
+        (overlay-put ov 'window (selected-window))
+        (overlay-put ov 'display
+                     (if content-height
+                         (propertize "\n"
+                                     'line-height
+                                     (/ (- window-height
+                                           content-height) 2))
+                         (propertize "\n" 'invisible t)))))
+    (set-window-start nil (point-min))))
+
+(cl-defun mb-center-buffer-vertically (&optional (buffer (current-buffer)))
+  "Inserts a newline character in the beginning of the buffer,
+displayed in a way that will make the buffer appear vertically
+centered. Not meant to be used in \"writing\" buffers, where
+undo history is important."
+  (with-current-buffer buffer
+    (add-hook 'window-configuration-change-hook 'mb--recenterv-buffer nil t)
+    ;; (add-hook 'post-command-hook 'mb--recenterv-buffer nil t)
+    ;; (add-hook 'window-scroll-functions 'mb--recenter-buffer nil t)
     ))
+
+;;; More like
 
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
@@ -362,20 +436,36 @@ since that would change the color of the line."
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Stipples"
-  (let (grid-strings stipple-names)
+(mb-section "Stipples / 2 columns / Line cursor"
+  "Uses stipples that come with your unix distribution. I'll add
+ a cutsom stipple example later. They have some re-drawing issues after scrolling."
+  (let ((ori-point (point))
+        grid-strings stipple-names)
     (cl-dolist (dir x-bitmap-file-path)
       (setq stipple-names
             (nconc
              stipple-names
              (remove-if (lambda (file) (member file '(".." ".")))
                         (directory-files dir)))))
+    (setq stipple-names
+          (sort stipple-names
+                (lambda (&rest ignore)
+                  (zerop (random 2)))))
+    (setq stipple-names
+          (last stipple-names 12))
     (while stipple-names
       (let* (( current-batch
                (list (pop stipple-names)
-                     (pop stipple-names)
                      (pop stipple-names))))
-        (push (nconc (cl-substitute " " nil current-batch)
+        (push (nconc (mapcar
+                      (lambda (name)
+                        (if (not name)
+                            " "
+                            (propertize name 'face
+                                        '(:weight
+                                          bold
+                                          :inherit variable-pitch))))
+                      current-batch)
                      (list (list 'line-height 2.0)))
               grid-strings)
         (push (nconc (mapcar (lambda (stipple)
@@ -389,9 +479,47 @@ since that would change the color of the line."
                              current-batch)
                      (list (list 'line-height 2.0)))
               grid-strings)))
+    (setq tmp (length grid-strings))
     (setq grid-strings (nreverse grid-strings))
-    (setq tmp grid-strings)
-    (mb-show-in-two-columns 4 2 grid-strings)))
+    (mb-show-in-two-columns 4 2 grid-strings)
+    (backward-char)
+    (setq-local face-remapping-alist
+                `((hl-line (:background
+                            ,(apply 'format "#%02X%02X%02X"
+                                    (mapcar (apply-partially '* 255)
+                                            (color-complement
+                                             (face-attribute 'cursor :background))))
+                            :inverse-video t))))
+    (let* ((end-point (point))
+           (counter 0)
+           (ov (make-overlay ori-point end-point)))
+      (add-hook 'window-scroll-functions
+                (lambda (&rest ignore)
+                  (let ((inhibit-read-only t))
+                    (save-excursion
+                      ;; (goto-char ori-point)
+                      ;; (if (overlay-get ov 'face)
+                      ;;     (overlay-put ov 'face nil)
+                      ;;     (overlay-put ov 'face `(:inverse-video t)))
+                      ;; (overlay-put ov 'face `(:inverse-video t))
+                      ;; (sit-for 1)
+                      ;; (overlay-put ov 'face nil)
+                      ;; (put-text-property ori-point end-point 'no-op-prop (cl-incf counter))
+                      ;; (put-text-property ori-point end-point 'face (cl-incf counter))
+                      ;; (while (and (< (point) end-point)
+                      ;;             (plusp (forward-line)))
+                      ;;   (insert (propertize " " 'invisible t) ))
+                      ;; (insert " ")
+                      ;; (delete-char -1)
+                      )))
+                t t))
+    (add-text-properties ori-point (point)
+                         (list 'point-entered (lambda (&rest ignore)
+                                                (setq cursor-type nil)
+                                                (hl-line-mode))
+                               'point-left (lambda (&rest ignore)
+                                             (setq cursor-type t)
+                                             (hl-line-mode -1))))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -492,11 +620,10 @@ Phasellus at dui in ligula mollis ultricies"
 (mb-section "Aligning variable width text"
   (mb-insert-info-links
    (info "(elisp) Pixel Specification"))
-  (mb-comment "Won't work should any of the text-lines be wider that the frame, at
-the moment of creation. Will also break, should the size of
-frame's text change. Generating the text properties is a lot slower
-than for fixed-width fonts. There might be a better way to do
-right alignement, using bidi text support.")
+  (mb-comment "Will break, should the size of frame's text
+ change. If there are line breaks, the lines won't align after a
+ window resize. There might be a better way to do right
+ alignement, using bidi text support. *WIP*")
   (let* (( paragraphs "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
@@ -572,20 +699,20 @@ Nam vestibulum accumsan nisl."
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Center horizontally and vertically"
-  (insert-button "Show in new buffer"
-                 'action (lambda (e)
-                           (switch-to-buffer
-                            (get-buffer-create
-                             "*magic-buffer-hv-centering*"))
-                           (let ((inhibit-read-only t))
-                             (erase-buffer)
-                             (insert "test")
-                             (mb-center-line-variable-width))
-                           (unless view-mode
-                             (view-mode 1))
-                           ))
-  )
+;; (mb-section "Center horizontally and vertically"
+;;   (insert-button "Show in new buffer"
+;;                  'action (lambda (e)
+;;                            (switch-to-buffer
+;;                             (get-buffer-create
+;;                              "*magic-buffer-hv-centering*"))
+;;                            (let ((inhibit-read-only t))
+;;                              (erase-buffer)
+;;                              (insert "test")
+;;                              (mb-center-line-variable-width))
+;;                            (unless view-mode
+;;                              (view-mode 1))
+;;                            ))
+;;   )
 
 ;; -----------------------------------------------------------------------------
 
@@ -786,10 +913,10 @@ was made to improve the situation, but it makes things worse on occasion."
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Widgets"
-  (insert-button "Click me" 'action
-                 (lambda (event)
-                   (message "Button clicked"))))
+;; (mb-section "Widgets"
+;;   (insert-button "Click me" 'action
+;;                  (lambda (event)
+;;                    (message "Button clicked"))))
 
 ;; -----------------------------------------------------------------------------
 
