@@ -298,7 +298,7 @@ fallbacks, if needed."
 
 (defvar mb-centerv nil)
 
-(cl-defun mb--recenterv-buffer (&rest ignore)
+(cl-defun mb--recenter-buffer-vertically (&optional dont-recenter)
   (let (content-height
         ( window-height (mb-window-inside-pixel-height))
         ( inhibit-read-only t)
@@ -312,7 +312,7 @@ fallbacks, if needed."
                         (selected-window))))
              (overlays-at (point-min))))
       (unless (setq content-height (mb-content-height))
-        (cl-return-from mb--recenterv-buffer nil))
+        (cl-return-from mb--recenter-buffer-vertically nil))
       (unless (get-text-property (point-min) 'mb-centerer)
         (with-silent-modifications
           (goto-char (point-min))
@@ -334,8 +334,9 @@ fallbacks, if needed."
                                      'line-height
                                      (/ (- window-height
                                            content-height) 2))
-                         (propertize "\n" 'invisible t)))))
-    (set-window-start nil (point-min))))
+                         (propertize "\n" 'invisible t))))
+      (unless dont-recenter
+        (set-window-start nil (point-min))))))
 
 (cl-defun mb-center-buffer-vertically (&optional (buffer (current-buffer)))
   "Inserts a newline character in the beginning of the buffer,
@@ -343,12 +344,18 @@ displayed in a way that will make the buffer appear vertically
 centered. Not meant to be used in \"writing\" buffers, where
 undo history is important."
   (with-current-buffer buffer
-    (add-hook 'window-configuration-change-hook 'mb--recenterv-buffer nil t)
-    ;; (add-hook 'post-command-hook 'mb--recenterv-buffer nil t)
+    (add-hook 'window-configuration-change-hook
+              'mb--recenter-buffer-vertically
+              nil t)
+    (add-hook 'post-command-hook
+              'mb--recenter-buffer-vertically
+              nil t)
+    (add-hook 'window-scroll-functions
+              (lambda (&rest ignore)
+                (mb--recenter-buffer-vertically t))
+              nil t)
     ;; (add-hook 'window-scroll-functions 'mb--recenter-buffer nil t)
     ))
-
-;;; More like
 
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
