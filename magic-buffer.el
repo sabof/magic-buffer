@@ -228,12 +228,12 @@ fallbacks, if needed."
                    (match-beginning 0)
                    (match-end 0)
                    'display
-                   `(space :width (,(- (es-window-pixel-width) pixel-width))))
+                   `(space :width (,(- (mb-window-inside-pixel-width) pixel-width))))
                   (put-text-property
                    (match-beginning 0)
                    (match-end 0)
                    'display
-                   `(space :width (,(/ (- (es-window-pixel-width) pixel-width)
+                   `(space :width (,(/ (- (mb-window-inside-pixel-width) pixel-width)
                                        2)))))
               (put-text-property
                (1- (point))
