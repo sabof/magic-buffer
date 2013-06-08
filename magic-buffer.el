@@ -110,11 +110,9 @@ fallbacks, if needed."
                    ))
           (setq end-pos (point))
           (goto-char start-pos)
-          (let (( regions
-                  (mapcar 'car (mb-region-pixel-dimensions-multiple
-                                (cl-loop while (< (point) end-pos)
-                                         collecting (cons (point) (line-end-position))
-                                         until (cl-plusp (forward-line)))))))
+          (let (( regions (cl-loop while (< (point) end-pos)
+                                   collecting (mb-posn-x (line-end-position))
+                                   until (cl-plusp (forward-line)))))
             (cl-assert (cl-every (apply-partially '= (car regions))
                                  regions)))
           (goto-char end-pos))
@@ -133,8 +131,8 @@ fallbacks, if needed."
              ,@body)
            ( (eq (current-buffer) (window-buffer))
              (let (( initial-start (window-start)))
-               ad-do-it
-               (set-window-start nil inital-start)))
+               (prog1 (progn ,@body)
+                 (set-window-start nil initial-start))))
            ( t (unwind-protect
                    (save-window-excursion
                      (set-window-buffer nil (current-buffer))
@@ -142,37 +140,24 @@ fallbacks, if needed."
                      ,@body)
                  (put 'mb-with-adjusted-enviroment 'active nil))))))
 
-(defun mb-posn-at-point (&optional pos)
+(defun mb-posn-x (&optional pos)
   (unless pos
     (setq pos (point)))
   (mb-with-adjusted-enviroment
     (goto-char pos)
-    (or (nth 2 (posn-at-point pos))
+    (or (car (nth 2 (posn-at-point pos)))
         (progn
           (goto-char (line-beginning-position))
           (set-window-start nil (point))
           (goto-char pos)
-          (nth 2 (posn-at-point pos))))))
+          (car (nth 2 (posn-at-point pos)))))))
 
-(defun mb-region-pixel-dimensions-multiple (alist)
-  (let* (( alist (copy-tree alist))
-         ( sorted-alist
-           (cl-sort (copy-sequence alist) '< :key 'car))
-         before after)
-    (mb-with-adjusted-enviroment
-      (cl-loop for cons in sorted-alist
-               with to = (mb-posn-at-point (car cons))
-               with from = (mb-posn-at-point (cdr cons))
-               do (progn (setcar cons (abs (- (car from) (car to))))
-                         (setcdr cons (abs (- (cdr from) (cdr to)))))
-               finally return alist))))
-
-(defun mb-region-pixel-dimensions (from to)
+(defun mb-region-pixel-width (from to)
   "Find a region's pixel "
-  (let (( from (mb-posn-at-point from))
-        ( to (mb-posn-at-point to)))
-    (cons (abs (- (car from) (car to)))
-          (abs (- (cdr from) (cdr to))))))
+  (mb-with-adjusted-enviroment
+    (let (( from (mb-posn-x from))
+          ( to (mb-posn-x to)))
+      (- to from))))
 
 (defun mb-window-inside-pixel-width (&optional window)
   (setq window (window-normalize-window window))
@@ -188,17 +173,15 @@ fallbacks, if needed."
   (mb-with-adjusted-enviroment
     ;; Add protection against negative aligmnets
     (beginning-of-visual-line)
-    (let* (( beginning-of-visual-line)
-           ( end-of-visual-line
+    (let* (( end-of-visual-line
              (save-excursion
                (end-of-visual-line)
                (point)))
-           ( region (list (point)
-                          (if (= (line-end-position) end-of-visual-line)
-                              (line-end-position)
-                              ;; FIXME: This makes the line one char narrower than it is
-                              (max (point-min) (1- end-of-visual-line)))))
-           ( pixel-width (car (apply 'mb-region-pixel-dimensions region)))
+           ( split-line (/= (line-end-position) end-of-visual-line))
+           ( pixel-width (if (not split-line)
+                             (mb-region-pixel-width (point) (line-end-position))
+                             (- (mb-window-inside-pixel-width)
+                                (mb-posn-x))))
            ( align-spec (if right
                             ;; Full-width lines will break, when word-wrap is
                             ;; enabled. That's why I substract one pixel in the
@@ -920,6 +903,7 @@ was made to improve the situation, but it makes things worse on occasion.")
         (fundamental-mode)
         (progn
           (setq truncate-lines nil)
+          (setq word-wrap t)
           (setq line-spacing 0)
           (setq left-fringe-width 8
                 right-fringe-width 8))
