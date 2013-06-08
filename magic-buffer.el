@@ -392,7 +392,7 @@ Created to ease development.")
     (fill-region beginning (point))))
 
 (defun mb-subsection-header (string)
-  (insert "\n" (propertize string 'face 'info-title-4) "\n\n"))
+  (insert "\n" (propertize string 'face 'info-title-4) "\n"))
 
 (defun mb-comment (string)
   (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
@@ -559,6 +559,7 @@ Sed diam
 Phasellus at dui in ligula mollis ultricies"
                                     "\n")))
     (mb-subsection-header "Center")
+    (insert "\n")
     (cl-dolist (text text-lines)
       (let ((spec `(space :align-to (- center ,(/ (length text) 2)))))
         (insert  (propertize text 'line-prefix
@@ -566,6 +567,7 @@ Phasellus at dui in ligula mollis ultricies"
                  "\n")))
 
     (mb-subsection-header "Right")
+    (insert "\n")
     (cl-dolist (text text-lines)
       (let ((spec `(space :align-to (- right ,(length text) (1)))))
         (insert  (propertize text 'line-prefix
@@ -573,6 +575,7 @@ Phasellus at dui in ligula mollis ultricies"
                  "\n"))))
 
   (mb-subsection-header "Display on both sides of the window")
+  (insert "\n")
   (let* (( text-left "LEFT --")
          ( text-right "-- RIGHT")
          ;; There is an off-by one bug. When word-wrap is enabled, the line will
@@ -599,6 +602,7 @@ Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem")
          end)
     (mb-subsection-header "Center")
+    (insert "\n")
     (save-excursion
       (cl-loop for text in (split-string paragraphs "\n")
                for height = 2.0 then (- height 0.4)
@@ -620,6 +624,7 @@ Curabitur vulputate vestibulum lorem")
 
     (goto-char (point-max))
     (mb-subsection-header "Right")
+    (insert "\n")
     (cl-loop for text in (split-string paragraphs "\n")
              for height = 1.0 then (+ height 0.4)
              do (let (( ori-point (point))
@@ -829,18 +834,21 @@ was made to improve the situation, but it makes things worse on occasion.")
           (ignore-errors (image-size `(image :type jpeg
                                              :file ,mb-expamle-image)))))
     (mb-subsection-header "Simple case")
+    (insert "\n")
     (insert-image `(image :type jpeg
                           :file ,mb-expamle-image)
                   "[you should be seeing an image]")
     (insert "\n\n")
     (when image-size
       (mb-subsection-header "Using `insert-sliced-image'")
+      (mb-comment "point-entered and point-left hooks are used,
+to prevent a box from showing around individual slices.")
+      (insert "\n")
       (let (( start (point)))
         (insert-sliced-image `(image :type jpeg
                                      :file ,mb-expamle-image)
                              "[you should be seeing an image]"
                              nil (car image-size))
-        ;; Prevent a box from showing around individual slices
         (add-text-properties
          start (point)
          (list 'point-entered (lambda (&rest ignore)
