@@ -835,10 +835,18 @@ was made to improve the situation, but it makes things worse on occasion.")
     (insert "\n\n")
     (when image-size
       (mb-subsection-header "Using `insert-sliced-image'")
-      (insert-sliced-image `(image :type jpeg
-                                   :file ,mb-expamle-image)
-                           "[you should be seeing an image]"
-                           nil (car image-size))
+      (let (( start (point)))
+        (insert-sliced-image `(image :type jpeg
+                                     :file ,mb-expamle-image)
+                             "[you should be seeing an image]"
+                             nil (car image-size))
+        ;; Prevent a box from showing around individual slices
+        (add-text-properties
+         start (point)
+         (list 'point-entered (lambda (&rest ignore)
+                                (setq cursor-type nil))
+               'point-left (lambda (&rest ignore)
+                             (setq cursor-type t)))))
       (insert "\n"))
     (mb-subsection-header "You can also crop images, or add a number of effects")
     (insert-image `(image :type jpeg
