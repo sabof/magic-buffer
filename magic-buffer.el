@@ -111,7 +111,8 @@ fallbacks, if needed."
           (setq end-pos (point))
           (goto-char start-pos)
           (let (( regions (cl-loop while (< (point) end-pos)
-                                   collecting (mb-posn-x (line-end-position))
+                                   collecting (car (mb-posn-at-point
+                                                    (line-end-position)))
                                    until (cl-plusp (forward-line)))))
             (cl-assert (cl-every (apply-partially '= (car regions))
                                  regions)))
@@ -140,23 +141,23 @@ fallbacks, if needed."
                      ,@body)
                  (put 'mb-with-adjusted-enviroment 'active nil))))))
 
-(defun mb-posn-x (&optional pos)
+(defun mb-posn-at-point (&optional pos)
   (unless pos
     (setq pos (point)))
   (mb-with-adjusted-enviroment
     (goto-char pos)
-    (or (car (nth 2 (posn-at-point pos)))
+    (or (posn-x-y (posn-at-point pos))
         (progn
           (goto-char (line-beginning-position))
           (set-window-start nil (point))
           (goto-char pos)
-          (car (nth 2 (posn-at-point pos)))))))
+          (posn-x-y (posn-at-point pos))))))
 
 (defun mb-region-pixel-width (from to)
   "Find a region's pixel "
   (mb-with-adjusted-enviroment
-    (let (( from (mb-posn-x from))
-          ( to (mb-posn-x to)))
+    (let (( from (car (mb-posn-at-point from)))
+          ( to (car (mb-posn-at-point to))))
       (- to from))))
 
 (defun mb-window-inside-pixel-width (&optional window)
@@ -169,36 +170,65 @@ fallbacks, if needed."
   (let (( window-pixel-edges (window-inside-pixel-edges)))
     (- (nth 3 window-pixel-edges) (nth 1 window-pixel-edges))))
 
+(defun mb-put-halign-overlay (from to &rest properties)
+  (setq properties
+        (append (list 'window (selected-window)
+                      'mb-hcenterer t)
+                properties))
+  (let ((ov (make-overlay from to)))
+    (while properties
+      (overlay-put ov (pop properties) (pop properties)))
+    ov))
+
 (defun mb-align-variable-width (&optional right)
   (mb-with-adjusted-enviroment
     ;; Add protection against negative aligmnets
     (beginning-of-visual-line)
-    (let* (( end-of-visual-line
+    (let* (( beginning-of-visual-line
+             (point))
+           ( end-of-visual-line
              (save-excursion
                (end-of-visual-line)
+               ;; (when (and right (/= (line-end-position) (point)))
+               ;;   (skip-chars-backward " " beginning-of-visual-line))
+               ;; (sit-for 0.5)
                (point)))
            ( split-line (/= (line-end-position) end-of-visual-line))
-           ( pixel-width (if (not split-line)
-                             (mb-region-pixel-width (point) (line-end-position))
-                             (- (mb-window-inside-pixel-width)
-                                (mb-posn-x))))
+           ( split-at-limit
+             (and split-line
+                  (/= (cdr (mb-posn-at-point end-of-visual-line))
+                      (cdr (mb-posn-at-point (point))))))
+           ( pixel-width
+             (if split-at-limit
+                 (- (mb-window-inside-pixel-width)
+                    (car (mb-posn-at-point)))
+                 (mb-region-pixel-width
+                  (point)
+                  end-of-visual-line)))
            ( align-spec (if right
                             ;; Full-width lines will break, when word-wrap is
-                            ;; enabled. That's why I substract one pixel in the
+                            ;; enabled. That's why I leave some space in the
                             ;; end. See:
                             ;; http://debbugs.gnu.org/cgi/bugreport.cgi?2749
-                            `(space :align-to (- right (,pixel-width) (1)))
+                            `(space :align-to (- right (,pixel-width)
+                                                 ,(if word-wrap 2.0 0)
+                                                 ))
                             `(space :align-to (- center (,(/ pixel-width 2)))))))
+      ;; (message "split: %s at limit: %s" split-line split-at-limit)
+      ;; (sit-for 0.5)
       (if (= (point) (line-beginning-position))
           (if (looking-at "[\t ]+")
-              (put-text-property
-               (match-beginning 0)
-               (match-end 0)
-               'display align-spec)
-              (put-text-property
+              (progn
+                (mb-put-halign-overlay
+                 (match-beginning 0)
+                 (match-end 0)
+                 'display align-spec))
+              (mb-put-halign-overlay
                (line-beginning-position)
                (line-end-position)
-               'line-prefix (propertize " " 'display align-spec)))
+               ;; 'before-string
+               'line-prefix
+               (propertize " " 'display align-spec)))
           (if (looking-at "[\t ]+")     ; in the middle of a logical line
               ;; In some cases, when a line is almost equal to the window's
               ;; width, and it ends with an align-to spec, it will belong to the
@@ -207,26 +237,48 @@ fallbacks, if needed."
               ;;
               ;; Or something like that. Might try to reproduce it later.
               (if right
-                  (put-text-property
+                  (mb-put-halign-overlay
                    (match-beginning 0)
                    (match-end 0)
                    'display
                    `(space :width (,(- (mb-window-inside-pixel-width) pixel-width))))
-                  (put-text-property
+                  (mb-put-halign-overlay
                    (match-beginning 0)
                    (match-end 0)
                    'display
                    `(space :width (,(/ (- (mb-window-inside-pixel-width) pixel-width)
                                        2)))))
-              (put-text-property
+              (mb-put-halign-overlay
                (1- (point))
                (min (1+ (point)) (point-max))
                'wrap-prefix (propertize " " 'display align-spec))))
+      ;; (sit-for 0.5)
+
       ;; Frame width 65
       ;; (error "test")
       pixel-width
       )))
 
+(defvar mb-buffer-auto-align-markers
+  '((right/center (marker) (marker)))
+  )
+
+(defun mb-align-regions-horizontally-do (&optional all-windows)
+  (cl-dolist (win (if all-windows
+                      (get-buffer-window-list)
+                      (list (selected-window))))
+    (with-selected-window win
+      (cl-loop for (type start end) in mb-buffer-auto-align-markers
+               do
+               ))))
+
+(defun mb-auto-align-region-horizontally ()
+  (add-hook 'window-configuration-change-hook
+            'ignore)
+  (add-hook 'post-command-hook
+            'ignore)
+
+  )
 (defun mb-delete-subsequence (from to list)
   (let (( after-to (nthcdr to list)))
     (if (zerop from)
@@ -272,52 +324,71 @@ fallbacks, if needed."
                     (= (point-min) (point-max)))
           (insert "\n")
           (setq added-newline t))
-        (prog1 (cdr (nth 2 (posn-at-point)))
+        (prog1 (cdr (posn-x-y (posn-at-point)))
           (when added-newline
             (delete-char -1)))
         ))))
 
 (defvar mb-centerv nil)
 
+(defun mb-virtualize-overlay (ov)
+  (append (list (overlay-start ov) (overlay-end ov))
+          (overlay-properties ov)))
+
+(defun mb-realize-overlay (ov-spec)
+  (cl-destructuring-bind
+      (start end &rest props)
+      ov-spec
+    (let ((ov (make-overlay start end)))
+      (while props
+        (overlay-put ov (pop props) (pop props))))
+    ov))
+
 (cl-defun mb--recenter-buffer-vertically (&optional dont-recenter)
-  (let (content-height
-        ( window-height (mb-window-inside-pixel-height))
-        ( inhibit-read-only t)
-        ov)
-    (save-excursion
-      (mapc 'delete-overlay
-            (cl-remove-if-not
-             (lambda (ov)
-               (and (overlay-get ov 'mb-centerer)
-                    (eq (overlay-get ov 'window)
-                        (selected-window))))
-             (overlays-at (point-min))))
-      (unless (setq content-height (mb-content-height))
-        (cl-return-from mb--recenter-buffer-vertically nil))
-      (unless (get-text-property (point-min) 'mb-centerer)
-        (with-silent-modifications
-          (goto-char (point-min))
-          (insert (propertize " " 'mb-centerer t ;; 'invisible t
-                              'rear-nonsticky '( ;; invisible
-                                                ;; read-only
-                                                mb-centerer)))))
-      (progn
-        (setq ov (make-overlay
-                  (point-min)
-                  (min (point-max)
-                       (1+ (point-min)))))
-        (overlay-put ov 'mb-centerer t)
-        (overlay-put ov 'read-only t)
-        (overlay-put ov 'window (selected-window))
-        (overlay-put ov 'display
-                     (if content-height
-                         (propertize "\n"
-                                     'line-height
-                                     (/ (- window-height
-                                           content-height) 2))
-                         (propertize "\n" 'invisible t))))
-      (unless dont-recenter
-        (set-window-start nil (point-min))))))
+  (let* (content-height
+         ( window-height (mb-window-inside-pixel-height))
+         ( inhibit-read-only t)
+         ( old-overlays
+           (cl-remove-if-not
+            (lambda (ov)
+              (and (overlay-get ov 'mb-vcenterer)
+                   (overlay-get ov 'mb-hcenterer)
+                   (eq (overlay-get ov 'window)
+                       (selected-window))))
+            (overlays-at (point-min))))
+         ( old-before-string
+           (and (car old-overlays)
+                (overlay-get (car old-overlays) 'mb-hcenterer)
+                (overlay-get (car old-overlays) 'before-string)))
+         ( old-horizontal-centering
+           (or (and old-before-string
+                    (string-match " " old-before-string)
+                    (get-text-property (match-beginning 0) 'display
+                                       old-before-string))
+               ""))
+         new-before-string
+         new-ov)
+    (mapc 'delete-overlay old-overlays)
+    (unless (setq content-height (mb-content-height))
+      (cl-return-from mb--recenter-buffer-vertically nil))
+    (setq new-before-string
+          (concat (when content-height
+                    (propertize "\n"
+                                'line-height
+                                (/ (- window-height
+                                      content-height) 2)))
+                  old-horizontal-centering))
+    (when (not (string= "" new-before-string))
+      (setq new-ov (make-overlay
+                    (point-min)
+                    (min (point-max)
+                         (1+ (point-min)))))
+      (overlay-put new-ov 'mb-centerer t)
+      ;; (overlay-put new-ov 'read-only t)
+      (overlay-put new-ov 'window (selected-window))
+      (overlay-put new-ov 'before-string new-before-string))
+    (unless dont-recenter
+      (set-window-start nil (point-min)))))
 
 (cl-defun mb-center-buffer-vertically (&optional (buffer (current-buffer)))
   "Inserts a newline character in the beginning of the buffer,
@@ -337,6 +408,12 @@ undo history is important."
               nil t)
     ;; (add-hook 'window-scroll-functions 'mb--recenter-buffer nil t)
     ))
+
+(define-minor-mode mb-alignment-mode
+  "Doc" nil nil nil
+  (if mb-alignment-mode
+      (progn
+        )))
 
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
@@ -562,25 +639,22 @@ Phasellus at dui in ligula mollis ultricies"
     (insert "\n")
     (cl-dolist (text text-lines)
       (let ((spec `(space :align-to (- center ,(/ (length text) 2)))))
-        (insert  (propertize text 'line-prefix
-                             (propertize " " 'display spec))
-                 "\n")))
+        (insert (propertize text 'line-prefix
+                            (propertize " " 'display spec))
+                "\n")))
 
     (mb-subsection-header "Right")
     (insert "\n")
     (cl-dolist (text text-lines)
       (let ((spec `(space :align-to (- right ,(length text) (1)))))
-        (insert  (propertize text 'line-prefix
-                             (propertize " " 'display spec))
-                 "\n"))))
+        (insert (propertize text 'line-prefix
+                            (propertize " " 'display spec))
+                "\n"))))
 
   (mb-subsection-header "Display on both sides of the window")
   (insert "\n")
   (let* (( text-left "LEFT --")
          ( text-right "-- RIGHT")
-         ;; There is an off-by one bug. When word-wrap is enabled, the line will
-         ;; break. That's why I substract one pixel in the end. This will show
-         ;; up as a single empty character on terminals.
          ( spec `(space :align-to (- right ,(length text-right) (1)))))
     (insert text-left)
     (insert (propertize " " 'display spec))
@@ -594,48 +668,49 @@ Phasellus at dui in ligula mollis ultricies"
    (info "(elisp) Pixel Specification"))
   (mb-comment "Will break, should the size of frame's text
 change. If there are line breaks, the lines won't align after a
-window resize. There might be a better way to do right
-alignement, using bidi text support. *WIP*")
+window resize. *WIP*")
   (let* (( paragraphs "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Sed id ligula quis est convallis tempor.
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem")
          end)
-    (mb-subsection-header "Center")
+    (when nil
+      (mb-subsection-header "Center")
+      (insert "\n")
+      (save-excursion
+        (cl-loop for text in (split-string paragraphs "\n")
+                 for height = 2.4 then (- height 0.4)
+                 for face-spec = `(:inherit variable-pitch :height ,height)
+                 do (insert (propertize text 'face face-spec) "\n"))
+        (setq end (point)))
+      ;; (vertical-motion) seems to misbehave when the buffer is burried
+      ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
+      ;; also reduces multiple (save-window-excurson)s to one.
+      (mb-with-adjusted-enviroment
+        (cl-loop while (< (point) end)
+                 do
+                 (mb-align-variable-width)
+                 (unless (cl-plusp (vertical-motion 1))
+                   (return))))
+
+      (goto-char (point-max)))
+    (mb-subsection-header "Right")
     (insert "\n")
     (save-excursion
       (cl-loop for text in (split-string paragraphs "\n")
-               for height = 2.0 then (- height 0.4)
+               for height = 1.0 then (+ height 0.4)
                for face-spec = `(:inherit variable-pitch :height ,height)
                do (insert (propertize text 'face face-spec) "\n"))
       (setq end (point)))
-    ;; (vertical-motion) seems to misbehave when
-    ;;
-    ;;     (not (eq (current-buffer) (window-buffer)))
-    ;;
-    ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
-    ;; also reduces multiple (save-window-excurson)s to one.
+
     (mb-with-adjusted-enviroment
       (cl-loop while (< (point) end)
                do
-               (mb-align-variable-width)
+               (mb-align-variable-width 'right)
                (unless (cl-plusp (vertical-motion 1))
                  (return))))
-
-    (goto-char (point-max))
-    (mb-subsection-header "Right")
-    (insert "\n")
-    (cl-loop for text in (split-string paragraphs "\n")
-             for height = 1.0 then (+ height 0.4)
-             do (let (( ori-point (point))
-                      ( face-spec  `(:inherit variable-pitch :height ,height)))
-                  (insert (propertize text 'face face-spec))
-                  ;; (goto-char ori-point)
-                  (mb-align-variable-width 'right)
-                  (insert "\n")
-                  ))
     ;; Fails with
-    ;; (set-frame-width nil 52)
     )
   )
 
@@ -916,11 +991,13 @@ to prevent a box from showing around individual slices.")
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (erase-buffer)
+        (delete-all-overlays)
         (fundamental-mode)
         (progn
           (setq truncate-lines nil)
           (setq word-wrap t)
           (setq line-spacing 0)
+          (setq truncate-partial-width-windows nil)
           (setq left-fringe-width 8
                 right-fringe-width 8))
         (setq-local revert-buffer-function 'magic-buffer)
