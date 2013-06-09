@@ -208,8 +208,7 @@ fallbacks, if needed."
            ( align-spec (if right
                             ;; Full-width lines will break, when word-wrap is
                             ;; enabled. That's why I leave some space in the
-                            ;; end. See:
-                            ;; http://debbugs.gnu.org/cgi/bugreport.cgi?2749
+                            ;; end. http://debbugs.gnu.org/cgi/bugreport.cgi?2749
                             `(space :align-to (- right (,pixel-width)
                                                  ,(if word-wrap 2.0 0)
                                                  ))
@@ -273,12 +272,9 @@ fallbacks, if needed."
                ))))
 
 (defun mb-auto-align-region-horizontally ()
-  (add-hook 'window-configuration-change-hook
-            'ignore)
-  (add-hook 'post-command-hook
-            'ignore)
+  (add-hook 'window-configuration-change-hook 'ignore)
+  (add-hook 'post-command-hook 'ignore))
 
-  )
 (defun mb-delete-subsequence (from to list)
   (let (( after-to (nthcdr to list)))
     (if (zerop from)
@@ -332,17 +328,17 @@ fallbacks, if needed."
 (defvar mb-centerv nil)
 
 (defun mb-virtualize-overlay (ov)
-  (append (list (overlay-start ov) (overlay-end ov))
-          (overlay-properties ov)))
+  (prog1 (append (list (overlay-start ov) (overlay-end ov))
+                 (overlay-properties ov))
+    (delete-overlay ov)))
 
 (defun mb-realize-overlay (ov-spec)
   (cl-destructuring-bind
       (start end &rest props)
       ov-spec
     (let ((ov (make-overlay start end)))
-      (while props
-        (overlay-put ov (pop props) (pop props))))
-    ov))
+      (while props (overlay-put ov (pop props) (pop props)))
+      ov)))
 
 (cl-defun mb--recenter-buffer-vertically (&optional dont-recenter)
   (let* (content-height
@@ -675,26 +671,38 @@ Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem")
          end)
-    (when nil
-      (mb-subsection-header "Center")
-      (insert "\n")
-      (save-excursion
-        (cl-loop for text in (split-string paragraphs "\n")
-                 for height = 2.4 then (- height 0.4)
-                 for face-spec = `(:inherit variable-pitch :height ,height)
-                 do (insert (propertize text 'face face-spec) "\n"))
-        (setq end (point)))
+    (mb-subsection-header "Center")
+    (insert "\n")
+    (save-excursion
+      (cl-loop for text in (split-string paragraphs "\n")
+               for height = 2.4 then (- height 0.4)
+               for face-spec = `(:inherit variable-pitch :height ,height)
+               do (insert (propertize text 'face face-spec) "\n"))
+      (setq end (point)))
+    (let (virtual-overlays)
       ;; (vertical-motion) seems to misbehave when the buffer is burried
       ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
       ;; also reduces multiple (save-window-excurson)s to one.
-      (mb-with-adjusted-enviroment
-        (cl-loop while (< (point) end)
-                 do
-                 (mb-align-variable-width)
-                 (unless (cl-plusp (vertical-motion 1))
-                   (return))))
+      (cl-dolist (win (or (get-buffer-window-list)
+                          (list (selected-window))))
+        (with-selected-window win
+          (mb-with-adjusted-enviroment
+            (save-excursion
+              (cl-loop while (< (point) end)
+                       do
+                       (mb-align-variable-width)
+                       (unless (cl-plusp (vertical-motion 1))
+                         (return))))
+            (setq virtual-overlays
+                  (append
+                   (mapcar 'mb-virtualize-overlay
+                           (overlays-in (point) end))
+                   virtual-overlays))
+            )
+          ))
+      (mapc 'mb-realize-overlay virtual-overlays))
 
-      (goto-char (point-max)))
+    (goto-char (point-max))
     (mb-subsection-header "Right")
     (insert "\n")
     (save-excursion
