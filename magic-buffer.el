@@ -895,7 +895,7 @@ A table of unicode box characters can be found in the source code."
                          (propertize " " 'display '(space :width (5))))))
     (mb-subsection-header "Paragraph with a single line")
     (mb-comment "The red line is drawn using text-properties, so the text can
-be copy-pasted with without extra spaces.")
+be copy-pasted without extra spaces.")
     (insert "\n")
     (mb-insert-filled
      (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc
@@ -914,6 +914,7 @@ Eoque integris ennius morborum impensa quadam quae apud provocatus, cum.")
     ;; (mb-subsection-header "Button")
     (mb-subsection-header "Extra leading")
     (mb-comment "The line-height property only has effect when applied to newline characters.")
+    (insert "\n")
     (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
 Integer placerat tristique nisl.
 Aenean in sem ac leo mollis blandit.
@@ -1066,6 +1067,7 @@ to prevent a box from showing around individual slices.")
                   ))
   (insert "\n\n")
   (mb-subsection-header "Subjecting online images to multiplication and skewing")
+  (insert "\n")
   (let ((data "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"400\" height=\"260\">
   <image id=\"image\" x=\"10\" y=\"10\" width=\"100\" height=\"45\" transform=\"skewX(10)\"
   xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
