@@ -126,7 +126,7 @@ fallbacks, if needed."
          (mapcar 'random (make-list 3 255))))
 
 (defun mb-kick-point (old new)
-  (forward-line (if (< old new) 1 -1)))
+  (forward-char (if (< old new) 1 -1)))
 
 (defmacro mb-with-adjusted-enviroment (&rest body)
   (declare (indent defun))
@@ -373,34 +373,44 @@ fallbacks, if needed."
              (propertize " " 'display `(space :width (,padding)))))
          ( segment-tb-border
            (lambda ()
-             (concat
-              (funcall segment-left-margin `(:height (,border-width)))
-              (propertize " "
-                          'display `(space :align-to (- right (20))
-                                           :height (,border-width))
-                          'face `(:background ,border-color))
-              (propertize "\n" 'line-height t))))
+             (propertize
+              (concat
+               (funcall segment-left-margin `(:height (,border-width)))
+               (propertize " "
+                           'display `(space :align-to (- right (20))
+                                            :height (,border-width))
+                           'face `(:background ,border-color))
+               (propertize "\n" 'line-height t))
+              'point-entered 'mb-kick-point)))
          ( segment-tb-padding
-             (lambda ()
-               (concat
-                (funcall segment-left-margin  `(:height (,padding)))
-                (funcall segment-lr-border  `(:height (,padding)))
-                (funcall segment-filler  `(:height (,padding)))
-                (funcall segment-lr-border  `(:height (,padding)))
-                (propertize "\n" 'line-height t))))
-           ( segment-line
-             (lambda (text)
-               (concat (funcall segment-left-margin)
+           (lambda ()
+             (propertize
+              (concat
+               (funcall segment-left-margin  `(:height (,padding)))
+               (funcall segment-lr-border  `(:height (,padding)))
+               (funcall segment-filler  `(:height (,padding)))
+               (funcall segment-lr-border  `(:height (,padding)))
+               (propertize "\n" 'line-height t))
+              'point-entered 'mb-kick-point)))
+         ( segment-line
+           (lambda (text)
+             (concat (propertize
+                      (concat
+                       (funcall segment-left-margin)
                        (funcall segment-lr-border)
-                       (funcall segment-lr-padding)
-                       (propertize text
-                                   'wrap-prefix
-                                   (concat (funcall segment-left-margin)
-                                           (funcall segment-lr-border)
-                                           (funcall segment-lr-padding)))
+                       (funcall segment-lr-padding))
+                      'point-entered 'mb-kick-point)
+                     (propertize text
+                                 'wrap-prefix
+                                 (concat (funcall segment-left-margin)
+                                         (funcall segment-lr-border)
+                                         (funcall segment-lr-padding)))
+                     (propertize
+                      (concat
                        (funcall segment-filler)
                        (funcall segment-lr-border)
-                       "\n"))))
+                       "\n")
+                      'point-entered 'mb-kick-point)))))
 
     (insert (funcall segment-tb-border)
             (funcall segment-tb-padding))
@@ -537,7 +547,7 @@ Created to ease development.")
   (insert "\n" (propertize string 'face 'info-title-4) "\n"))
 
 (defun mb-comment (string)
-  (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
+  (mb-insert-filled (propertize string 'face '(:inherit (variable-pitch font-lock-comment-face))))
   (insert "\n"))
 
 
@@ -898,28 +908,33 @@ A table of unicode box characters can be found in the source code."
 be copy-pasted without extra spaces.")
     (insert "\n")
     (mb-insert-filled
-     (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc
-porta vulputate tellus. Proin quam nisl, tincidunt et, mattis eget, convallis
-nec, purus. Nullam tempus. Pellentesque tristique imperdiet tortor. Lorem ipsum
-dolor sit amet, consectetuer adipiscing elit."
+     (propertize "Nixam aliquando efficiat, omittendis ad, aliter similia hominem exitum, temeritate.
+Disserendum neque fortasse, consequantur illud et erat potest voluptas temperantiam isdem.
+Quod mihi loca consilio ipsius, aliae quo voluptatis.
+Quod nisi litteras fieri posuit torquate expetendam cum."
                  'wrap-prefix prefix
                  'line-prefix prefix
-                 'face 'italic))
+                 'face '(:slant italic :inherit variable-pitch)))
     (insert "\n")
     (mb-subsection-header "Boxed paragraph")
+    (mb-comment "Should the contained text exceed the width of the box, gaps
+will appear in the right border.")
     (insert "\n")
-    (mb-insert-boxed-text "Falsi autem ut constituto tarentinis, sapientiam.
-Eoque integris ennius morborum impensa quadam quae apud provocatus, cum.")
+    (mb-insert-boxed-text
+     (propertize "Falsi autem ut constituto tarentinis, sapientiam.
+Eoque integris ennius morborum impensa quadam quae apud provocatus, cum."
+                 'face 'variable-pitch))
     ;; (mb-subsection-header "Rounded corners")
     ;; (mb-subsection-header "Button")
     (mb-subsection-header "Extra leading")
     (mb-comment "The line-height property only has effect when applied to newline characters.")
     (insert "\n")
-    (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-Integer placerat tristique nisl.
-Aenean in sem ac leo mollis blandit.
-Nunc eleifend leo vitae magna.
+    (insert (propertize "Sollicitudines regione finiri est inpotenti patria, dolorum morati omnino latinas.
+Ullam ipso tot assentior ita etiam.
+Etiamsi facio illas et notissima et bonis quod semper disserendi alias.
+Ab beateque omnem in humili, mandamus potest constituant amicitia, quoniam.
 "
+                        'face 'variable-pitch
                         'line-height 1.5
                         ))
     ))
@@ -1032,7 +1047,6 @@ to prevent a box from showing around individual slices.")
              <circle cx=\"50%%\" cy=\"50%%\" r=\"45%%\" stroke=\"#888\" stroke-width=\"2\" fill-opacity=\"0\" />
              </svg>"
                      width width)))
-
       (insert (propertize "A centered " 'face face-spec)
               (propertize " "
                           'display `(image :ascent 65
@@ -1111,10 +1125,9 @@ to prevent a box from showing around individual slices.")
         (insert (propertize "Magic buffer"
                             'face 'info-title-2)
                 "\n")
-        (mb-insert-filled
-         (propertize "If you want to see the source, do `M-x find-function magic-buffer'"
-                     'face 'font-lock-comment-face))
-        (insert "\n\n")
+        (mb-comment "If you want to see the source, do `M-x find-function
+magic-buffer'")
+        (insert "\n")
         (cl-dolist (section (if mb--exclusive-section
                                 (cl-remove-if-not
                                  (apply-partially
