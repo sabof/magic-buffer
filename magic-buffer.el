@@ -125,7 +125,7 @@ fallbacks, if needed."
   (apply 'format "#%02X%02X%02X"
          (mapcar 'random (make-list 3 255))))
 
-(defun mb-kick-point (old new)
+(defun mb-kick-cursor (old new)
   (forward-char (if (< old new) 1 -1)))
 
 (defmacro mb-with-adjusted-enviroment (&rest body)
@@ -381,7 +381,7 @@ fallbacks, if needed."
                                             :height (,border-width))
                            'face `(:background ,border-color))
                (propertize "\n" 'line-height t))
-              'point-entered 'mb-kick-point)))
+              'point-entered 'mb-kick-cursor)))
          ( segment-tb-padding
            (lambda ()
              (propertize
@@ -391,7 +391,7 @@ fallbacks, if needed."
                (funcall segment-filler  `(:height (,padding)))
                (funcall segment-lr-border  `(:height (,padding)))
                (propertize "\n" 'line-height t))
-              'point-entered 'mb-kick-point)))
+              'point-entered 'mb-kick-cursor)))
          ( segment-line
            (lambda (text)
              (concat (propertize
@@ -399,7 +399,7 @@ fallbacks, if needed."
                        (funcall segment-left-margin)
                        (funcall segment-lr-border)
                        (funcall segment-lr-padding))
-                      'point-entered 'mb-kick-point)
+                      'point-entered 'mb-kick-cursor)
                      (propertize text
                                  'wrap-prefix
                                  (concat (funcall segment-left-margin)
@@ -410,7 +410,7 @@ fallbacks, if needed."
                        (funcall segment-filler)
                        (funcall segment-lr-border)
                        "\n")
-                      'point-entered 'mb-kick-point)))))
+                      'point-entered 'mb-kick-cursor)))))
 
     (insert (funcall segment-tb-border)
             (funcall segment-tb-padding))
@@ -574,7 +574,7 @@ since that would change the color of the line."
            "\n"
            'display `(space :align-to (- right (1)))
            'face '(:underline t)
-           'point-entered 'mb-kick-point
+           'point-entered 'mb-kick-cursor
            ))
   (insert "\n"))
 
@@ -1024,7 +1024,7 @@ to prevent a box from showing around individual slices.")
                               ;; (or (eq 'image (car (cl-getf props 'display)))
                               ;;     (message (car (cl-getf props 'display))))
                               )
-                     (funcall 'mb-kick-point old new)))))))
+                     (funcall 'mb-kick-cursor old new)))))))
       (insert "\n"))
     (mb-subsection-header "You can also crop images, or add a number of effects")
     (insert "\n")
