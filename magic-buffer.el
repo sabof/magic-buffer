@@ -831,17 +831,6 @@ Nam vestibulum accumsan nisl."
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Extra leading"
-  "The line-height property only has effect when applied to newline characters."
-  (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-Integer placerat tristique nisl.
-Aenean in sem ac leo mollis blandit.
-Nunc eleifend leo vitae magna.
-"
-                      'line-height 1.5
-                      )))
-;; -----------------------------------------------------------------------------
-
 (mb-section "Utf-8 tables"
   "Some fonts don't support box characters well, for example the
 widths might be different. For those cases an ASCII fallback is
@@ -899,13 +888,13 @@ A table of unicode box characters can be found in the source code."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Decorated paragraphs"
-  "The red line is drawn using text-properties, so the text can
-be copy-pasted with without extra spaces."
   (let (( prefix (concat (propertize " " 'display '(space :width (20)))
                          (propertize " " 'display '(space :width (3))
                                      'face '(:background "DarkRed"))
                          (propertize " " 'display '(space :width (5))))))
-    (mb-subsection-header "Quoted paragraph")
+    (mb-subsection-header "Paragraph with a single line")
+    (mb-comment "The red line is drawn using text-properties, so the text can
+be copy-pasted with without extra spaces.")
     (insert "\n")
     (mb-insert-filled
      (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc
@@ -920,8 +909,17 @@ dolor sit amet, consectetuer adipiscing elit."
     (insert "\n")
     (mb-insert-boxed-text "Falsi autem ut constituto tarentinis, sapientiam.
 Eoque integris ennius morborum impensa quadam quae apud provocatus, cum.")
-    (mb-subsection-header "Rounded corners")
-    (mb-subsection-header "Button")
+    ;; (mb-subsection-header "Rounded corners")
+    ;; (mb-subsection-header "Button")
+    (mb-subsection-header "Extra leading")
+    (mb-comment "The line-height property only has effect when applied to newline characters.")
+    (insert (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+Integer placerat tristique nisl.
+Aenean in sem ac leo mollis blandit.
+Nunc eleifend leo vitae magna.
+"
+                        'line-height 1.5
+                        ))
     ))
 
 ;; -----------------------------------------------------------------------------
@@ -990,7 +988,7 @@ was made to improve the situation, but it makes things worse on occasion.")
     (insert "\n\n")
     (when image-size
       (mb-subsection-header "Using `insert-sliced-image'")
-      (mb-comment "point-entered and point-left hooks are used,
+      (mb-comment "point-entered hook is used,
 to prevent a box from showing around individual slices.")
       (insert "\n")
       (let (( start (point)))
@@ -1001,19 +999,17 @@ to prevent a box from showing around individual slices.")
         (add-text-properties
          start (point)
          (list 'point-entered
-               (lambda (&rest ignore)
+               (lambda (old new)
                  (let ((props (text-properties-at (point))))
                    (when (and props
                               (cl-getf props 'display)
                               ;; (or (eq 'image (car (cl-getf props 'display)))
                               ;;     (message (car (cl-getf props 'display))))
                               )
-                     (forward-char))))
-               ;; 'point-left (lambda (&rest ignore)
-               ;;               (setq cursor-type t))
-               )))
+                     (funcall 'mb-kick-point old new)))))))
       (insert "\n"))
     (mb-subsection-header "You can also crop images, or add a number of effects")
+    (insert "\n")
     (insert-image `(image :type jpeg
                           :file ,mb-expamle-image)
                   "[you should be seeing an image]"
@@ -1031,8 +1027,8 @@ to prevent a box from showing around individual slices.")
            ( face-spec '(:height 1.5 :inherit variable-pitch))
            ( image-data
              (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"%s\" height=\"%s\">
-  <circle cx=\"50%%\" cy=\"50%%\" r=\"45%%\" stroke=\"#888\" stroke-width=\"2\" fill-opacity=\"0\" />
-  </svg>"
+             <circle cx=\"50%%\" cy=\"50%%\" r=\"45%%\" stroke=\"#888\" stroke-width=\"2\" fill-opacity=\"0\" />
+             </svg>"
                      width width)))
 
       (insert (propertize "A centered " 'face face-spec)
@@ -1053,6 +1049,7 @@ to prevent a box from showing around individual slices.")
 (mb-section "SVG"
   "More complex effects can be achieved through SVG"
   (mb-subsection-header "Resizing an masking")
+  (insert "\n")
   ;; The link probably won't work on winodws
   (let ((data (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"109\" height=\"150\">
           <defs>
