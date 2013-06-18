@@ -272,10 +272,11 @@ fallbacks, if needed."
   (cl-dolist (win (if all-windows
                       (get-buffer-window-list)
                       (list (selected-window))))
-    (with-selected-window win
-      (cl-loop for (type start end) in mb-buffer-auto-align-markers
-               do
-               ))))
+    ;; (with-selected-window win
+    ;;   (cl-loop for (type start end) in mb-buffer-auto-align-markers
+    ;;            do
+    ;;            ))
+    ))
 
 (defun mb-auto-align-region-horizontally ()
   (add-hook 'window-configuration-change-hook 'ignore)
