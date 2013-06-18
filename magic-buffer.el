@@ -978,12 +978,13 @@ make new ones is to use an external package called `fringe-helper'.")
   (mb-comment "Hover with your mouse over the labels to change the pointer.")
   (insert "\n")
   (mapc (lambda (pointer-sym)
-          (insert (propertize
-                   (symbol-name pointer-sym)
+          (insert "  "
+                  (propertize
+                   (concat "  " (symbol-name pointer-sym) "  ")
                    'pointer pointer-sym
-                   'face '(:background "Purple"))
-                  "\n\n"))
-        '(text arrow hand vdrag hdrag modeline hourglass)))
+                   'face '(:background "Purple" :inherit variable-pitch))))
+        '(text arrow hand vdrag hdrag modeline hourglass))
+  (insert (propertize "\n" 'line-height '(1.5 1.5))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -1145,7 +1146,7 @@ magic-buffer'")
                 (mb-insert-filled
                  (propertize
                   (format "%s\n\n" doc)
-                  'face 'font-lock-comment-face))
+                  'face '(:inherit (variable-pitch font-lock-comment-face))))
                 (insert "\n"))
             (funcall function)
             (goto-char (point-max))
