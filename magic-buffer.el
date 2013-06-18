@@ -125,6 +125,9 @@ fallbacks, if needed."
   (apply 'format "#%02X%02X%02X"
          (mapcar 'random (make-list 3 255))))
 
+(defun mb-kick-point (old new)
+  (forward-line (if (< old new) 1 -1)))
+
 (defmacro mb-with-adjusted-enviroment (&rest body)
   (declare (indent defun))
   `(save-excursion
@@ -212,7 +215,10 @@ fallbacks, if needed."
                             `(space :align-to (- right (,pixel-width)
                                                  ,(if word-wrap 2.0 0)
                                                  ))
-                            `(space :align-to (- center (,(/ pixel-width 2)))))))
+                            `(space :align-to (- center (,(/ pixel-width 2))
+                                                 ;; Didn't seem to be necessary so far.
+                                                 ;; ,(if word-wrap 1.0 0)
+                                                 )))))
       ;; (message "split: %s at limit: %s" split-line split-at-limit)
       ;; (sit-for 0.5)
       (if (= (point) (line-beginning-position))
@@ -225,8 +231,8 @@ fallbacks, if needed."
               (mb-put-halign-overlay
                (line-beginning-position)
                (line-end-position)
-               ;; 'before-string
-               'line-prefix
+               'before-string
+               ;; 'line-prefix
                (propertize " " 'display align-spec)))
           (if (looking-at "[\t ]+")     ; in the middle of a logical line
               ;; In some cases, when a line is almost equal to the window's
@@ -340,6 +346,69 @@ fallbacks, if needed."
       (while props (overlay-put ov (pop props) (pop props)))
       ov)))
 
+(cl-defun mb-insert-boxed-text (text &key (border-width 3)
+                                     (horizontal-margins 20)
+                                     (padding 5)
+                                     (border-color "DarkRed"))
+  (let* (( segment-left-margin
+           (lambda (&optional additonal-specs)
+             (propertize " "
+                         'display `(space :align-to (,horizontal-margins)
+                                          ,@additonal-specs))))
+         ( segment-filler
+           (lambda (&optional additonal-specs)
+             (propertize " "
+                         'display `(space :align-to (- right
+                                                       (,horizontal-margins)
+                                                       (,border-width))
+                                          ,@additonal-specs))))
+         ( segment-lr-border
+           (lambda (&optional additonal-specs)
+             (propertize " " 'display `(space :width (,border-width)
+                                              ,@additonal-specs)
+                         'face `(:background ,border-color))))
+         ( segment-lr-padding
+           (lambda ()
+             (propertize " " 'display `(space :width (,padding)))))
+         ( segment-tb-border
+           (lambda ()
+             (concat
+              (funcall segment-left-margin `(:height (,border-width)))
+              (propertize " "
+                          'display `(space :align-to (- right (20))
+                                           :height (,border-width))
+                          'face `(:background ,border-color))
+              (propertize "\n" 'line-height t))))
+         ( segment-tb-padding
+             (lambda ()
+               (concat
+                (funcall segment-left-margin  `(:height (,padding)))
+                (funcall segment-lr-border  `(:height (,padding)))
+                (funcall segment-filler  `(:height (,padding)))
+                (funcall segment-lr-border  `(:height (,padding)))
+                (propertize "\n" 'line-height t))))
+           ( segment-line
+             (lambda (text)
+               (concat (funcall segment-left-margin)
+                       (funcall segment-lr-border)
+                       (funcall segment-lr-padding)
+                       (propertize text
+                                   'wrap-prefix
+                                   (concat (funcall segment-left-margin)
+                                           (funcall segment-lr-border)
+                                           (funcall segment-lr-padding)))
+                       (funcall segment-filler)
+                       (funcall segment-lr-border)
+                       "\n"))))
+
+    (insert (funcall segment-tb-border)
+            (funcall segment-tb-padding))
+    (mapc (lambda (line) (insert (funcall segment-line line)))
+          (split-string text "\n"))
+    (insert (funcall segment-tb-padding)
+            (funcall segment-tb-border))
+    ))
+
 (cl-defun mb--recenter-buffer-vertically (&optional dont-recenter)
   (let* (content-height
          ( window-height (mb-window-inside-pixel-height))
@@ -418,7 +487,6 @@ undo history is important."
 (setq mb-sections nil)
 (defvar mb-counter 1)
 (setq mb-counter 1)
-
 (defvar mb--exclusive-section nil
   "Only show the section with a particular number.
 Created to ease development.")
@@ -471,6 +539,9 @@ Created to ease development.")
   (mb-insert-filled (propertize string 'face 'font-lock-comment-face))
   (insert "\n"))
 
+
+
+
 (defmacro mb-insert-info-links (&rest links)
   `(progn
      (delete-char -1)
@@ -492,9 +563,7 @@ since that would change the color of the line."
            "\n"
            'display `(space :align-to (- right (1)))
            'face '(:underline t)
-           'point-entered (lambda (old new)
-                            (forward-line
-                             (if (< old new) 1 -1)))
+           'point-entered 'mb-kick-point
            ))
   (insert "\n"))
 
@@ -670,37 +739,26 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Sed id ligula quis est
 Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem")
-         end)
+         start end)
     (mb-subsection-header "Center")
     (insert "\n")
-    (save-excursion
-      (cl-loop for text in (split-string paragraphs "\n")
-               for height = 2.4 then (- height 0.4)
-               for face-spec = `(:inherit variable-pitch :height ,height)
-               do (insert (propertize text 'face face-spec) "\n"))
-      (setq end (point)))
+    (setq start (point))
+    (cl-loop for text in (split-string paragraphs "\n")
+             for height = 2.4 then (- height 0.4)
+             for face-spec = `(:inherit variable-pitch :height ,height)
+             do (insert (propertize text 'face face-spec) "\n"))
+    (setq end (point))
     (let (virtual-overlays)
       ;; (vertical-motion) seems to misbehave when the buffer is burried
       ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
       ;; also reduces multiple (save-window-excurson)s to one.
-      (cl-dolist (win (or (get-buffer-window-list)
-                          (list (selected-window))))
-        (with-selected-window win
-          (mb-with-adjusted-enviroment
-            (save-excursion
-              (cl-loop while (< (point) end)
-                       do
-                       (mb-align-variable-width)
-                       (unless (cl-plusp (vertical-motion 1))
-                         (return))))
-            (setq virtual-overlays
-                  (append
-                   (mapcar 'mb-virtualize-overlay
-                           (overlays-in (point) end))
-                   virtual-overlays))
-            )
-          ))
-      (mapc 'mb-realize-overlay virtual-overlays))
+      (mb-with-adjusted-enviroment
+        (goto-char start)
+        (cl-loop while (< (point) end)
+                 do
+                 (mb-align-variable-width)
+                 (unless (cl-plusp (vertical-motion 1))
+                   (return)))))
 
     (goto-char (point-max))
     (mb-subsection-header "Right")
@@ -840,14 +898,15 @@ A table of unicode box characters can be found in the source code."
 
 ;; -----------------------------------------------------------------------------
 
-(mb-section "Quoted paragraph"
+(mb-section "Decorated paragraphs"
   "The red line is drawn using text-properties, so the text can
 be copy-pasted with without extra spaces."
-  (let (( prefix (concat " "
-                         (propertize " "
-                                     'display '(space :width (4))
+  (let (( prefix (concat (propertize " " 'display '(space :width (20)))
+                         (propertize " " 'display '(space :width (3))
                                      'face '(:background "DarkRed"))
-                         " ")))
+                         (propertize " " 'display '(space :width (5))))))
+    (mb-subsection-header "Quoted paragraph")
+    (insert "\n")
     (mb-insert-filled
      (propertize "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nunc
 porta vulputate tellus. Proin quam nisl, tincidunt et, mattis eget, convallis
@@ -856,6 +915,13 @@ dolor sit amet, consectetuer adipiscing elit."
                  'wrap-prefix prefix
                  'line-prefix prefix
                  'face 'italic))
+    (insert "\n")
+    (mb-subsection-header "Boxed paragraph")
+    (insert "\n")
+    (mb-insert-boxed-text "Falsi autem ut constituto tarentinis, sapientiam.
+Eoque integris ennius morborum impensa quadam quae apud provocatus, cum.")
+    (mb-subsection-header "Rounded corners")
+    (mb-subsection-header "Button")
     ))
 
 ;; -----------------------------------------------------------------------------
@@ -934,10 +1000,18 @@ to prevent a box from showing around individual slices.")
                              nil (car image-size))
         (add-text-properties
          start (point)
-         (list 'point-entered (lambda (&rest ignore)
-                                (setq cursor-type nil))
-               'point-left (lambda (&rest ignore)
-                             (setq cursor-type t)))))
+         (list 'point-entered
+               (lambda (&rest ignore)
+                 (let ((props (text-properties-at (point))))
+                   (when (and props
+                              (cl-getf props 'display)
+                              ;; (or (eq 'image (car (cl-getf props 'display)))
+                              ;;     (message (car (cl-getf props 'display))))
+                              )
+                     (forward-char))))
+               ;; 'point-left (lambda (&rest ignore)
+               ;;               (setq cursor-type t))
+               )))
       (insert "\n"))
     (mb-subsection-header "You can also crop images, or add a number of effects")
     (insert-image `(image :type jpeg
@@ -949,7 +1023,32 @@ to prevent a box from showing around individual slices.")
                           :file ,mb-expamle-image
                           :conversion disabled)
                   "[you should be seeing an image]"
-                  nil '(60 25 100 150))))
+                  nil '(60 25 100 150))
+    (insert "\n")
+    (mb-subsection-header "Images and text")
+    (insert "\n")
+    (let* (( width 50)
+           ( face-spec '(:height 1.5 :inherit variable-pitch))
+           ( image-data
+             (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"%s\" height=\"%s\">
+  <circle cx=\"50%%\" cy=\"50%%\" r=\"45%%\" stroke=\"#888\" stroke-width=\"2\" fill-opacity=\"0\" />
+  </svg>"
+                     width width)))
+
+      (insert (propertize "A centered " 'face face-spec)
+              (propertize " "
+                          'display `(image :ascent 65
+                                           :type svg
+                                           :data ,image-data))
+              (propertize " inline image"
+                          'face face-spec)
+              "\n\n")
+      (insert (propertize "An image " 'face face-spec)
+              (propertize " "
+                          'display `(image :ascent 90
+                                           :type svg
+                                           :data ,image-data))
+              (propertize " aligned to the bottom" 'face face-spec)))))
 
 (mb-section "SVG"
   "More complex effects can be achieved through SVG"
