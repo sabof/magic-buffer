@@ -1060,13 +1060,8 @@ to prevent a box from showing around individual slices.")
                start (point)
                (list 'point-entered
                      (lambda (old new)
-                       (let ((props (text-properties-at (point))))
-                         (when (and props
-                                    (cl-getf props 'display)
-                                    ;; (or (eq 'image (car (cl-getf props 'display)))
-                                    ;;     (message (car (cl-getf props 'display))))
-                                    )
-                           (funcall 'mb-kick-cursor old new)))))))
+                       (when (cl-getf (text-properties-at (point)) 'display)
+                         (funcall 'mb-kick-cursor old new))))))
             (insert "\n"))))
 
       (mb-subsection "You can also crop images, or add a number of effects"
