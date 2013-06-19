@@ -126,7 +126,10 @@ fallbacks, if needed."
          (mapcar 'random (make-list 3 255))))
 
 (defun mb-kick-cursor (old new)
-  (forward-char (if (< old new) 1 -1)))
+  (cond ( (and (< old new) (not (= (point-max) (point))))
+          (forward-char 1))
+        ( (and (not (< old new)) (not (= (point-min) (point))))
+          (forward-char -1))))
 
 (defmacro mb-with-adjusted-enviroment (&rest body)
   (declare (indent defun))
@@ -538,13 +541,16 @@ Created to ease development.")
                         (lambda ()
                           ,@body)))))
 
+(defmacro mb-subsection (name &rest body)
+  (declare (indent defun))
+  `(progn
+     (insert "\n" (propertize ,name 'face 'info-title-4) "\n")
+     ,@body))
+
 (defun mb-insert-filled (string)
   (let ((beginning (point)))
     (insert string)
     (fill-region beginning (point))))
-
-(defun mb-subsection-header (string)
-  (insert "\n" (propertize string 'face 'info-title-4) "\n"))
 
 (defun mb-comment (string)
   (mb-insert-filled (propertize string 'face '(:inherit (variable-pitch font-lock-comment-face))))
@@ -711,31 +717,31 @@ Nam euismod tellus id erat
 Sed diam
 Phasellus at dui in ligula mollis ultricies"
                                     "\n")))
-    (mb-subsection-header "Center")
-    (insert "\n")
-    (cl-dolist (text text-lines)
-      (let ((spec `(space :align-to (- center ,(/ (length text) 2)))))
-        (insert (propertize text 'line-prefix
-                            (propertize " " 'display spec))
-                "\n")))
+    (mb-subsection "Center"
+      (insert "\n")
+      (cl-dolist (text text-lines)
+        (let ((spec `(space :align-to (- center ,(/ (length text) 2)))))
+          (insert (propertize text 'line-prefix
+                              (propertize " " 'display spec))
+                  "\n"))))
 
-    (mb-subsection-header "Right")
-    (insert "\n")
-    (cl-dolist (text text-lines)
-      (let ((spec `(space :align-to (- right ,(length text) (1)))))
-        (insert (propertize text 'line-prefix
-                            (propertize " " 'display spec))
-                "\n"))))
+    (mb-subsection "Right"
+      (insert "\n")
+      (cl-dolist (text text-lines)
+        (let ((spec `(space :align-to (- right ,(length text) (1)))))
+          (insert (propertize text 'line-prefix
+                              (propertize " " 'display spec))
+                  "\n")))))
 
-  (mb-subsection-header "Display on both sides of the window")
-  (insert "\n")
-  (let* (( text-left "LEFT --")
-         ( text-right "-- RIGHT")
-         ( spec `(space :align-to (- right ,(length text-right) (1)))))
-    (insert text-left)
-    (insert (propertize " " 'display spec))
-    (insert text-right)
-    ))
+  (mb-subsection "Display on both sides of the window"
+    (insert "\n")
+    (let* (( text-left "LEFT --")
+           ( text-right "-- RIGHT")
+           ( spec `(space :align-to (- right ,(length text-right) (1)))))
+      (insert text-left)
+      (insert (propertize " " 'display spec))
+      (insert text-right)
+      )))
 
 ;; -----------------------------------------------------------------------------
 
@@ -751,45 +757,42 @@ Pellentesque dapibus ligula
 Proin neque massa, eget, lacus
 Curabitur vulputate vestibulum lorem")
          start end)
-    (mb-subsection-header "Center")
-    (insert "\n")
-    (setq start (point))
-    (cl-loop for text in (split-string paragraphs "\n")
-             for height = 2.4 then (- height 0.4)
-             for face-spec = `(:inherit variable-pitch :height ,height)
-             do (insert (propertize text 'face face-spec) "\n"))
-    (setq end (point))
-    (let (virtual-overlays)
-      ;; (vertical-motion) seems to misbehave when the buffer is burried
-      ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
-      ;; also reduces multiple (save-window-excurson)s to one.
-      (mb-with-adjusted-enviroment
-        (goto-char start)
-        (cl-loop while (< (point) end)
-                 do
-                 (mb-align-variable-width)
-                 (unless (cl-plusp (vertical-motion 1))
-                   (return)))))
-
-    (goto-char (point-max))
-    (mb-subsection-header "Right")
-    (insert "\n")
-    (save-excursion
+    (mb-subsection "Center"
+      (insert "\n")
+      (setq start (point))
       (cl-loop for text in (split-string paragraphs "\n")
-               for height = 1.0 then (+ height 0.4)
+               for height = 2.4 then (- height 0.4)
                for face-spec = `(:inherit variable-pitch :height ,height)
                do (insert (propertize text 'face face-spec) "\n"))
-      (setq end (point)))
+      (setq end (point))
+      (let (virtual-overlays)
+        ;; (vertical-motion) seems to misbehave when the buffer is burried
+        ;; (mb-with-adjusted-enviroment) ensures that the buffer is displayed. It
+        ;; also reduces multiple (save-window-excurson)s to one.
+        (mb-with-adjusted-enviroment
+          (goto-char start)
+          (cl-loop while (< (point) end)
+                   do
+                   (mb-align-variable-width)
+                   (unless (cl-plusp (vertical-motion 1))
+                     (return)))))
+      (goto-char (point-max)))
+    (mb-subsection "Right"
+      (insert "\n")
+      (save-excursion
+        (cl-loop for text in (split-string paragraphs "\n")
+                 for height = 1.0 then (+ height 0.4)
+                 for face-spec = `(:inherit variable-pitch :height ,height)
+                 do (insert (propertize text 'face face-spec) "\n"))
+        (setq end (point)))
 
-    (mb-with-adjusted-enviroment
-      (cl-loop while (< (point) end)
-               do
-               (mb-align-variable-width 'right)
-               (unless (cl-plusp (vertical-motion 1))
-                 (return))))
-    ;; Fails with
-    )
-  )
+      (mb-with-adjusted-enviroment
+        (cl-loop while (< (point) end)
+                 do
+                 (mb-align-variable-width 'right)
+                 (unless (cl-plusp (vertical-motion 1))
+                   (return)))))
+    ))
 
 ;; -----------------------------------------------------------------------------
 
@@ -903,40 +906,41 @@ A table of unicode box characters can be found in the source code."
                          (propertize " " 'display '(space :width (3))
                                      'face '(:background "DarkRed"))
                          (propertize " " 'display '(space :width (5))))))
-    (mb-subsection-header "Paragraph with a single line")
-    (mb-comment "The red line is drawn using text-properties, so the text can
+
+    (mb-subsection "Paragraph with a single line"
+      (mb-comment "The red line is drawn using text-properties, so the text can
 be copy-pasted without extra spaces.")
-    (insert "\n")
-    (mb-insert-filled
-     (propertize "Nixam aliquando efficiat, omittendis ad, aliter similia hominem exitum, temeritate.
+      (insert "\n")
+      (mb-insert-filled
+       (propertize "Nixam aliquando efficiat, omittendis ad, aliter similia hominem exitum, temeritate.
 Disserendum neque fortasse, consequantur illud et erat potest voluptas temperantiam isdem.
 Quod mihi loca consilio ipsius, aliae quo voluptatis.
 Quod nisi litteras fieri posuit torquate expetendam cum."
-                 'wrap-prefix prefix
-                 'line-prefix prefix
-                 'face '(:slant italic :inherit variable-pitch)))
-    (insert "\n")
-    (mb-subsection-header "Boxed paragraph")
-    (mb-comment "Should the contained text exceed the width of the box, gaps
+                   'wrap-prefix prefix
+                   'line-prefix prefix
+                   'face '(:slant italic :inherit variable-pitch)))
+      (insert "\n"))
+
+    (mb-subsection "Boxed paragraph"
+      (mb-comment "Should the contained text exceed the width of the box, gaps
 will appear in the right border.")
-    (insert "\n")
-    (mb-insert-boxed-text
-     (propertize "Falsi autem ut constituto tarentinis, sapientiam.
+      (insert "\n")
+      (mb-insert-boxed-text
+       (propertize "Falsi autem ut constituto tarentinis, sapientiam.
 Eoque integris ennius morborum impensa quadam quae apud provocatus, cum."
-                 'face 'variable-pitch))
-    ;; (mb-subsection-header "Rounded corners")
-    ;; (mb-subsection-header "Button")
-    (mb-subsection-header "Extra leading")
-    (mb-comment "The line-height property only has effect when applied to newline characters.")
-    (insert "\n")
-    (insert (propertize "Sollicitudines regione finiri est inpotenti patria, dolorum morati omnino latinas.
+                   'face 'variable-pitch)))
+
+    (mb-subsection "Extra leading"
+      (mb-comment "The line-height property only has effect when applied to newline characters.")
+      (insert "\n")
+      (insert (propertize "Sollicitudines regione finiri est inpotenti patria, dolorum morati omnino latinas.
 Ullam ipso tot assentior ita etiam.
 Etiamsi facio illas et notissima et bonis quod semper disserendi alias.
 Ab beateque omnem in humili, mandamus potest constituant amicitia, quoniam.
 "
-                        'face 'variable-pitch
-                        'line-height 1.5
-                        ))
+                          'face 'variable-pitch
+                          'line-height 1.5
+                          )))
     ))
 
 ;; -----------------------------------------------------------------------------
@@ -984,91 +988,97 @@ make new ones is to use an external package called `fringe-helper'.")
                    'pointer pointer-sym
                    'face '(:background "Purple" :inherit variable-pitch))))
         '(text arrow hand vdrag hdrag modeline hourglass))
+
+  ;; As far as I was able to tell, this line-height format translates to
+  ;; ((+ TEXT-HEIGHT TOP) (+ TEXT-HEIGHT BOTTOM))
+  ;; the line-height info page is wrong
+
   (insert (propertize "\n" 'line-height '(1.5 1.5))))
 
-;; -----------------------------------------------------------------------------
+  ;; -----------------------------------------------------------------------------
 
-(mb-section "Images"
-  (mb-insert-info-links
-   (info "(elisp) Showing Images")
-   (info "(elisp) Image Descriptors"))
-  (mb-comment "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
+  (mb-section "Images"
+    (mb-insert-info-links
+     (info "(elisp) Showing Images")
+     (info "(elisp) Image Descriptors"))
+    (mb-comment "Scrolling generally misbehaves with images. Presumably `insert-sliced-image'
 was made to improve the situation, but it makes things worse on occasion.")
-  (let (( image-size
-          ;; For terminal displays
-          (ignore-errors (image-size `(image :type jpeg
-                                             :file ,mb-expamle-image)))))
-    (mb-subsection-header "Simple case")
-    (insert "\n")
-    (insert-image `(image :type jpeg
-                          :file ,mb-expamle-image)
-                  "[you should be seeing an image]")
-    (insert "\n\n")
-    (when image-size
-      (mb-subsection-header "Using `insert-sliced-image'")
-      (mb-comment "point-entered hook is used,
+    (let (( image-size
+            ;; For terminal displays
+            (ignore-errors (image-size `(image :type jpeg
+                                               :file ,mb-expamle-image)))))
+      (mb-subsection "Simple case"
+        (insert "\n")
+        (insert-image `(image :type jpeg
+                              :file ,mb-expamle-image)
+                      "[you should be seeing an image]")
+        (insert "\n\n")
+        (when image-size
+          (mb-subsection-header "Using `insert-sliced-image'")
+          (mb-comment "point-entered hook is used,
 to prevent a box from showing around individual slices.")
-      (insert "\n")
-      (let (( start (point)))
-        (insert-sliced-image `(image :type jpeg
-                                     :file ,mb-expamle-image)
-                             "[you should be seeing an image]"
-                             nil (car image-size))
-        (add-text-properties
-         start (point)
-         (list 'point-entered
-               (lambda (old new)
-                 (let ((props (text-properties-at (point))))
-                   (when (and props
-                              (cl-getf props 'display)
-                              ;; (or (eq 'image (car (cl-getf props 'display)))
-                              ;;     (message (car (cl-getf props 'display))))
-                              )
-                     (funcall 'mb-kick-cursor old new)))))))
-      (insert "\n"))
-    (mb-subsection-header "You can also crop images, or add a number of effects")
-    (insert "\n")
-    (insert-image `(image :type jpeg
-                          :file ,mb-expamle-image)
-                  "[you should be seeing an image]"
-                  nil '(60 25 100 150))
-    (insert " ")
-    (insert-image `(image :type jpeg
-                          :file ,mb-expamle-image
-                          :conversion disabled)
-                  "[you should be seeing an image]"
-                  nil '(60 25 100 150))
-    (insert "\n")
-    (mb-subsection-header "Images and text")
-    (insert "\n")
-    (let* (( width 50)
-           ( face-spec '(:height 1.5 :inherit variable-pitch))
-           ( image-data
-             (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"%s\" height=\"%s\">
+          (insert "\n")
+          (let (( start (point)))
+            (insert-sliced-image `(image :type jpeg
+                                         :file ,mb-expamle-image)
+                                 "[you should be seeing an image]"
+                                 nil (car image-size))
+            (add-text-properties
+             start (point)
+             (list 'point-entered
+                   (lambda (old new)
+                     (let ((props (text-properties-at (point))))
+                       (when (and props
+                                  (cl-getf props 'display)
+                                  ;; (or (eq 'image (car (cl-getf props 'display)))
+                                  ;;     (message (car (cl-getf props 'display))))
+                                  )
+                         (funcall 'mb-kick-cursor old new)))))))
+          (insert "\n")))
+
+      (mb-subsection "You can also crop images, or add a number of effects"
+        (insert "\n")
+        (insert-image `(image :type jpeg
+                              :file ,mb-expamle-image)
+                      "[you should be seeing an image]"
+                      nil '(60 25 100 150))
+        (insert " ")
+        (insert-image `(image :type jpeg
+                              :file ,mb-expamle-image
+                              :conversion disabled)
+                      "[you should be seeing an image]"
+                      nil '(60 25 100 150))
+        (insert "\n"))
+      (mb-subsection "Images and text"
+        (insert "\n")
+        (let* (( width 50)
+               ( face-spec '(:height 1.5 :inherit variable-pitch))
+               ( image-data
+                 (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"%s\" height=\"%s\">
              <circle cx=\"50%%\" cy=\"50%%\" r=\"45%%\" stroke=\"#888\" stroke-width=\"2\" fill-opacity=\"0\" />
              </svg>"
-                     width width)))
-      (insert (propertize "A centered " 'face face-spec)
-              (propertize " "
-                          'display `(image :ascent 65
-                                           :type svg
-                                           :data ,image-data))
-              (propertize " inline image"
-                          'face face-spec)
-              "\n\n")
-      (insert (propertize "An image " 'face face-spec)
-              (propertize " "
-                          'display `(image :ascent 90
-                                           :type svg
-                                           :data ,image-data))
-              (propertize " aligned to the bottom" 'face face-spec)))))
+                         width width)))
+          (insert (propertize "A centered " 'face face-spec)
+                  (propertize " "
+                              'display `(image :ascent 65
+                                               :type svg
+                                               :data ,image-data))
+                  (propertize " inline image"
+                              'face face-spec)
+                  "\n\n")
+          (insert (propertize "An image " 'face face-spec)
+                  (propertize " "
+                              'display `(image :ascent 90
+                                               :type svg
+                                               :data ,image-data))
+                  (propertize " aligned to the bottom" 'face face-spec))))))
 
 (mb-section "SVG"
   "More complex effects can be achieved through SVG"
-  (mb-subsection-header "Resizing an masking")
-  (insert "\n")
-  ;; The link probably won't work on winodws
-  (let ((data (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"109\" height=\"150\">
+  (mb-subsection "Resizing an masking"
+    (insert "\n")
+    ;; The link probably won't work on winodws
+    (let ((data (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"109\" height=\"150\">
           <defs>
           <clipPath id=\"circularPath\" clipPathUnits=\"objectBoundingBox\">
           <circle cx=\"0.5\" cy=\"0.5\" r=\"0.5\"/>
@@ -1077,22 +1087,21 @@ to prevent a box from showing around individual slices.")
           <image id=\"image\" width=\"109\" height=\"150\" style=\"clip-path: url(#circularPath);\"
           xlink:href=\"file://%s\" />
           </svg>"
-                      mb-expamle-image)))
-    (insert-image `(image :type svg :data ,data)
-                  ))
-  (insert "\n\n")
-  (mb-subsection-header "Subjecting online images to multiplication and skewing")
-  (insert "\n")
-  (let ((data "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"400\" height=\"260\">
+                        mb-expamle-image)))
+      (insert-image `(image :type svg :data ,data)
+                    ))
+    (insert "\n\n"))
+  (mb-subsection "Subjecting online images to multiplication and skewing"
+    (insert "\n")
+    (let ((data "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"400\" height=\"260\">
   <image id=\"image\" x=\"10\" y=\"10\" width=\"100\" height=\"45\" transform=\"skewX(10)\"
   xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
   <image id=\"image2\" x=\"50\" y=\"35\" width=\"200\" height=\"90\" transform=\"skewX(-10)\"
   xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
   <image id=\"image2\" x=\"50\" y=\"100\" width=\"300\" height=\"135\" transform=\"skewX(10)\"
   xlink:href=\"http://www.gnu.org/graphics/behroze/behroze-gnu-button1.png\" />
-  </svg>"
-              ))
-    (insert-image `(image :type svg :data ,data))))
+  </svg>"))
+      (insert-image `(image :type svg :data ,data)))))
 
 ;; -----------------------------------------------------------------------------
 
