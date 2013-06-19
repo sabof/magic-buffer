@@ -104,10 +104,7 @@ fallbacks, if needed."
           (cl-loop for char across string
                    do
                    (cl-assert (char-displayable-p char)))
-          (insert (propertize
-                   string
-                   'face '(:height 2.0 :family "DejaVu Sans Mono")
-                   ))
+          (insert string)
           (setq end-pos (point))
           (goto-char start-pos)
           (let (( regions (cl-loop while (< (point) end-pos)
@@ -826,7 +823,7 @@ Nam vestibulum accumsan nisl."
                                            :height ,(+ 1.0 (/ (random 10) 10.0))))
               (propertize " " 'display spec)
               (propertize " " 'face '(:background "red")
-                          'display '(space :width (2)))
+                          'display '(space :width (3)))
               " More text"
               "\n"))))
 
@@ -899,8 +896,10 @@ A table of unicode box characters can be found in the source code."
     ;; table characters have equal width with letters once, and then use them or
     ;; ASCII accordingly. This would be noticably faster.
 
-    (mb-table-insert table1)
-    (mb-table-insert table2)
+    (mb-table-insert
+     (propertize table1 'face '(:height 1.4 :family "DejaVu Sans Mono")))
+    (mb-table-insert
+     (propertize table2 'face '(:height 1.4 :family "DejaVu Sans Mono")))
     ))
 
 ;; -----------------------------------------------------------------------------
@@ -1017,7 +1016,8 @@ was made to improve the situation, but it makes things worse on occasion.")
     (let (( image-size
             ;; For terminal displays
             (ignore-errors (image-size `(image :type jpeg
-                                               :file ,mb-expamle-image)))))
+                                               :file ,mb-expamle-image)
+                                       t))))
       (mb-subsection "Simple case"
         (insert "\n")
         (insert-image `(image :type jpeg
@@ -1033,7 +1033,29 @@ to prevent a box from showing around individual slices.")
               (insert-sliced-image `(image :type jpeg
                                            :file ,mb-expamle-image)
                                    "[you should be seeing an image]"
-                                   nil (car image-size))
+                                   nil (max 1 (1- (/ (car image-size)
+                                                     (frame-char-height)))))
+              (goto-char start)
+              (cl-loop until (= (point) (point-max))
+                       for segment in (list "You can also add text next to"
+                                            "sliced images. The technique"
+                                            "I'm using is problematic,"
+                                            "as the distance between the"
+                                            "lines is noticably larger."
+                                            "There might be a better way"
+                                            "to do it.")
+                       do (progn
+                            (goto-char (line-beginning-position))
+                            (when (cl-getf (text-properties-at (point)) 'display)
+                              (goto-char (line-end-position))
+                              (insert "   " (propertize
+                                             segment
+                                             'face
+                                             '(:slant italic
+                                                      :inherit (variable-pitch
+                                                                font-lock-comment-face)))))
+                            (forward-line)))
+              (goto-char (point-max))
               (add-text-properties
                start (point)
                (list 'point-entered
