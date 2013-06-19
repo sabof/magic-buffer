@@ -353,7 +353,8 @@ fallbacks, if needed."
 (cl-defun mb-insert-boxed-text (text &key (border-width 3)
                                      (horizontal-margins 20)
                                      (padding 5)
-                                     (border-color "DarkRed"))
+                                     (border-color "DarkRed")
+                                     (right-align-spec 'right))
   (let* (( segment-left-margin
            (lambda (&optional additonal-specs)
              (propertize " "
@@ -362,9 +363,10 @@ fallbacks, if needed."
          ( segment-filler
            (lambda (&optional additonal-specs)
              (propertize " "
-                         'display `(space :align-to (- right
-                                                       (,horizontal-margins)
-                                                       (,border-width))
+                         'display `(space :align-to
+                                          (- ,right-align-spec
+                                             (,border-width)
+                                             (,horizontal-margins))
                                           ,@additonal-specs))))
          ( segment-lr-border
            (lambda (&optional additonal-specs)
@@ -380,7 +382,9 @@ fallbacks, if needed."
               (concat
                (funcall segment-left-margin `(:height (,border-width)))
                (propertize " "
-                           'display `(space :align-to (- right (20))
+                           'display `(space :align-to
+                                            (- ,right-align-spec
+                                               (,horizontal-margins))
                                             :height (,border-width))
                            'face `(:background ,border-color))
                (propertize "\n" 'line-height t))
@@ -631,7 +635,7 @@ a cutsom stipple example later. They have some re-drawing issues after scrolling
               grid-strings)))
     (setq tmp (length grid-strings))
     (setq grid-strings (nreverse grid-strings))
-    (mb-show-in-two-columns 4 2 grid-strings)
+    (mb-show-in-two-columns '(20) 2 grid-strings)
     (backward-char)
     (setq-local face-remapping-alist
                 `((hl-line (:background
@@ -710,13 +714,13 @@ a cutsom stipple example later. They have some re-drawing issues after scrolling
    (info "(elisp) Pixel Specification"))
   (mb-comment "The alignment will persist on window resizing, unless the window is narrower
 than the text.")
-  (let* (( text-lines (split-string "Lorem ipsum dolor sit amet
-Sed bibendum
-Curabitur lacinia pulvinar nibh
-Nam euismod tellus id erat
-Sed diam
-Phasellus at dui in ligula mollis ultricies"
-                                    "\n")))
+  (let* (( text-lines (split-string
+                       "Reperiuntur quaeritur horrent nisi, summum solido animo
+Consequi quapropter e sed dolor ita fore
+Censes profecto legendos neque quid, omne laudantium putanda beatus philosophi
+Fieri quam ad nos et ut alios voluptatibus, statuam
+Cernantur individua ista dicam tua igitur philosophia amicitia numeranda arbitratu"
+                       "\n")))
     (mb-subsection "Center"
       (insert "\n")
       (cl-dolist (text text-lines)
@@ -961,7 +965,7 @@ make new ones is to use an external package called `fringe-helper'.")
              do
              (unless (zerop iter)
                (insert "\n"))
-             (insert (propertize (concat "* " (symbol-name (car pair)))
+             (insert (propertize (concat "✸ " (symbol-name (car pair)))
                                  'face 'info-title-4)
                      "\n")
              (if (symbolp (cdr pair))
@@ -986,7 +990,14 @@ make new ones is to use an external package called `fringe-helper'.")
                   (propertize
                    (concat "  " (symbol-name pointer-sym) "  ")
                    'pointer pointer-sym
-                   'face '(:background "Purple" :inherit variable-pitch))))
+                   'face `(:height 1.0
+                                   :background ,(face-attribute 'font-lock-keyword-face
+                                                                :foreground)
+                                   :inherit variable-pitch)
+                   'mouse-face '(:height 1.0
+                                         :background "#888"
+                                         :foreground "black"
+                                         :inherit variable-pitch))))
         '(text arrow hand vdrag hdrag modeline hourglass))
 
   ;; As far as I was able to tell, this line-height format translates to
@@ -1056,6 +1067,8 @@ to prevent a box from showing around individual slices.")
                ( image-data
                  (format "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"%s\" height=\"%s\">
              <circle cx=\"50%%\" cy=\"50%%\" r=\"45%%\" stroke=\"#888\" stroke-width=\"2\" fill-opacity=\"0\" />
+<line x1=\"30%%\" y1=\"30%%\" x2=\"70%%\" y2=\"70%%\" stroke=\"#888\" stroke-width=\"6\"/>
+<line x1=\"30%%\" y1=\"70%%\" x2=\"70%%\" y2=\"30%%\" stroke=\"#888\" stroke-width=\"6\"/>
              </svg>"
                          width width)))
           (insert (propertize "A centered " 'face face-spec)
