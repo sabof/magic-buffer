@@ -1025,27 +1025,27 @@ was made to improve the situation, but it makes things worse on occasion.")
                       "[you should be seeing an image]")
         (insert "\n\n")
         (when image-size
-          (mb-subsection-header "Using `insert-sliced-image'")
-          (mb-comment "point-entered hook is used,
+          (mb-subsection "Using `insert-sliced-image'"
+            (mb-comment "point-entered hook is used,
 to prevent a box from showing around individual slices.")
-          (insert "\n")
-          (let (( start (point)))
-            (insert-sliced-image `(image :type jpeg
-                                         :file ,mb-expamle-image)
-                                 "[you should be seeing an image]"
-                                 nil (car image-size))
-            (add-text-properties
-             start (point)
-             (list 'point-entered
-                   (lambda (old new)
-                     (let ((props (text-properties-at (point))))
-                       (when (and props
-                                  (cl-getf props 'display)
-                                  ;; (or (eq 'image (car (cl-getf props 'display)))
-                                  ;;     (message (car (cl-getf props 'display))))
-                                  )
-                         (funcall 'mb-kick-cursor old new)))))))
-          (insert "\n")))
+            (insert "\n")
+            (let (( start (point)))
+              (insert-sliced-image `(image :type jpeg
+                                           :file ,mb-expamle-image)
+                                   "[you should be seeing an image]"
+                                   nil (car image-size))
+              (add-text-properties
+               start (point)
+               (list 'point-entered
+                     (lambda (old new)
+                       (let ((props (text-properties-at (point))))
+                         (when (and props
+                                    (cl-getf props 'display)
+                                    ;; (or (eq 'image (car (cl-getf props 'display)))
+                                    ;;     (message (car (cl-getf props 'display))))
+                                    )
+                           (funcall 'mb-kick-cursor old new)))))))
+            (insert "\n"))))
 
       (mb-subsection "You can also crop images, or add a number of effects"
         (insert "\n")
