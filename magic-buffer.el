@@ -469,7 +469,12 @@ fallbacks, if needed."
           (shadow-distance 5)
           (background-color "DarkRed")
           (right-align-spec 'right))
-  (let* (( segment-left-margin
+  (let* (( stipple
+           ;; Everything can be converted to bits, so as far as I can tell,
+           ;; everything will work.
+           '(2 2 "a
+a"))
+         ( segment-left-margin
            (lambda (&optional additonal-specs)
              (propertize " "
                          'display `(space :align-to (,horizontal-margins)
@@ -487,7 +492,8 @@ fallbacks, if needed."
            (lambda (&optional additonal-specs)
              (propertize " " 'display `(space :width (,border-width)
                                               ,@additonal-specs)
-                         'face `(:foreground "Black" :stipple "gray"))))
+                         'face `(:foreground "Black" :stipple ,stipple))))
+
          ( segment-lr-padding
            (lambda ()
              (propertize " " 'display `(space :width (,padding))
@@ -508,7 +514,7 @@ fallbacks, if needed."
                                             (- ,right-align-spec
                                                (,horizontal-margins))
                                             :height (,shadow-distance))
-                           'face `(:foreground "Black" :stipple "gray"))
+                           'face `(:foreground "Black" :stipple ,stipple))
                (propertize "\n" 'line-height t))
               ;; 'point-entered 'mb-kick-cursor
               )))
