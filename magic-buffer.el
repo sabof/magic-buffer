@@ -1100,7 +1100,8 @@ Si propemodum consecutus posse operam facillime accurate quae suavitate te.
 Quasi reperiri ad parta quae semper scripta a etiam malum."
                    'face `(:foreground ,(face-attribute 'default :background)))
        :background-color "DarkCyan"
-       :padding 15))
+       ;; :padding 15
+       ))
 
     (mb-subsection "Extra leading"
       (mb-comment "The line-height property only has effect when applied to newline characters.")
