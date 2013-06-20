@@ -464,12 +464,13 @@ fallbacks, if needed."
 (cl-defun mb-insert-shadowed-text
     (text &key (horizontal-margins 20)
           (padding 5)
-          (border-width 5)
-          (border-color "Blue")
           (shadow-distance 5)
           (background-color "DarkRed")
           (right-align-spec 'right))
-  (let* (( stipple
+  (let* (;; Legacy stuff
+         (border-width 5)
+
+         ( stipple
            ;; Everything can be converted to bits, so as far as I can tell,
            ;; everything will work.
            '(2 2 "a
@@ -1097,7 +1098,9 @@ Eoque integris ennius morborum impensa quadam quae apud provocatus, cum."
        (propertize "Plane amicos sed enim, eruditi voluptate honestatis dolemus inermis, athenis.
 Si propemodum consecutus posse operam facillime accurate quae suavitate te.
 Quasi reperiri ad parta quae semper scripta a etiam malum."
-                   'face `(:foreground ,(face-attribute 'default :background) :inherit variable-pitch))))
+                   'face `(:foreground ,(face-attribute 'default :background)))
+       :background-color "DarkCyan"
+       :padding 15))
 
     (mb-subsection "Extra leading"
       (mb-comment "The line-height property only has effect when applied to newline characters.")
