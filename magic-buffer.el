@@ -737,10 +737,13 @@ since that would change the color of the line."
 ;; -----------------------------------------------------------------------------
 
 (mb-section "Stipples / 2 columns / Line cursor"
-  "Uses stipples that come with your unix distribution. I'll add
-a cutsom stipple example later. They have some re-drawing issues after scrolling."
+  "Uses stipples that come with your unix distribution. They have \
+some re-drawing issues after scrolling."
   (let ((ori-point (point))
-        grid-strings stipple-names)
+        grid-strings stipple-names
+        ( grey-stipple
+          '(2 2 "a
+a")))
     (cl-dolist (dir x-bitmap-file-path)
       (setq stipple-names
             (nconc
@@ -752,30 +755,33 @@ a cutsom stipple example later. They have some re-drawing issues after scrolling
                 (lambda (&rest ignore)
                   (zerop (random 2)))))
     (setq stipple-names
-          (last stipple-names 12))
+          (or (last stipple-names 12)
+              (make-list 12 grey-stipple)))
     (while stipple-names
       (let* (( current-batch
                (list (pop stipple-names)
                      (pop stipple-names))))
         (push (nconc (mapcar
                       (lambda (name)
-                        (if (not name)
-                            " "
-                            (propertize name 'face
-                                        '(:weight
-                                          bold
-                                          :inherit variable-pitch))))
+                        (cond ( (not name)
+                                " ")
+                              ( (stringp name)
+                                (propertize name 'face
+                                            '(:weight
+                                              bold
+                                              :inherit variable-pitch)))
+                              ( t "default")))
                       current-batch)
                      (list (list 'line-height 2.0)))
               grid-strings)
         (push (nconc (mapcar (lambda (stipple)
-                               (if (not stipple)
-                                   " "
-                                   (propertize " "
-                                               'face
-                                               `(:inherit
-                                                 font-lock-comment-face
-                                                 :stipple ,stipple))))
+                               (if stipple
+                                   (propertize
+                                    " " 'face
+                                    `(:inherit
+                                      font-lock-comment-face
+                                      :stipple ,stipple))
+                                   " "))
                              current-batch)
                      (list (list 'line-height 2.0)))
               grid-strings)))
