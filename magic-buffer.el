@@ -118,6 +118,14 @@ fallbacks, if needed."
               start-pos end-pos)
              ))))
 
+(defun mb-colorize-string-chars (string)
+  (cl-loop for i from 0 to (1- (length string))
+           do (put-text-property
+               i (1+ i) 'face (append `(:background ,(mb-theme-color-source))
+                                      (get-text-property i 'face string))
+               string))
+  string)
+
 (defun mb-random-hex-color ()
   (apply 'format "#%02X%02X%02X"
          (mapcar 'random (make-list 3 255))))
@@ -176,7 +184,7 @@ fallbacks, if needed."
 (defun mb-put-halign-overlay (from to &rest properties)
   (setq properties
         (append (list 'window (selected-window)
-                      'mb-hcenterer t)
+                      'mb-hcenterer (selected-window))
                 properties))
   (let ((ov (make-overlay from to)))
     (while properties
@@ -209,16 +217,22 @@ fallbacks, if needed."
                   (point)
                   end-of-visual-line)))
            ( align-spec (if right
+
                             ;; Full-width lines will break, when word-wrap is
                             ;; enabled. That's why I leave some space in the
-                            ;; end. http://debbugs.gnu.org/cgi/bugreport.cgi?2749
-                            `(space :align-to (- right (,pixel-width)
-                                                 ,(if word-wrap 2.0 0)
-                                                 ))
-                            `(space :align-to (- center (,(/ pixel-width 2))
-                                                 ;; Didn't seem to be necessary so far.
-                                                 ;; ,(if word-wrap 1.0 0)
-                                                 )))))
+                            ;; end.
+                            ;; http://debbugs.gnu.org/cgi/bugreport.cgi?2749
+
+                            `(space :align-to
+                                    (- right (,pixel-width)
+                                       ,(if word-wrap 2.0 0)
+                                       ))
+                            `(space :align-to
+                                    (- center (,(/ pixel-width 2))
+                                       ;; Didn't seem to be necessary so far.
+
+                                       ;; ,(if word-wrap 1.0 0)
+                                       )))))
       ;; (message "split: %s at limit: %s" split-line split-at-limit)
       ;; (sit-for 0.5)
       (if (= (point) (line-beginning-position))
@@ -232,31 +246,38 @@ fallbacks, if needed."
                (line-beginning-position)
                (line-end-position)
                'before-string
-               ;; 'line-prefix
                (propertize " " 'display align-spec)))
           (if (looking-at "[\t ]+")     ; in the middle of a logical line
+
               ;; In some cases, when a line is almost equal to the window's
               ;; width, and it ends with an align-to spec, it will belong to the
               ;; next line, while being centered to the previous, resulting in
-              ;; that character's disappearance.
-              ;;
-              ;; Or something like that. Might try to reproduce it later.
+              ;; that character's disappearance. Or something like that. Might
+              ;; try to reproduce it later.
+
+              ;; This is mostly relevant for cases when truncate-lines is
+              ;; non-nil, and word-wrap is nil -- a broken line with word-wrap
+              ;; usually begins with a visible character.
+
               (if right
                   (mb-put-halign-overlay
                    (match-beginning 0)
                    (match-end 0)
                    'display
-                   `(space :width (,(- (mb-window-inside-pixel-width) pixel-width))))
+                   `(space :width (,(- (mb-window-inside-pixel-width)
+                                       pixel-width))))
                   (mb-put-halign-overlay
                    (match-beginning 0)
                    (match-end 0)
                    'display
-                   `(space :width (,(/ (- (mb-window-inside-pixel-width) pixel-width)
+                   `(space :width (,(/ (- (mb-window-inside-pixel-width)
+                                          pixel-width)
                                        2)))))
               (mb-put-halign-overlay
-               (1- (point))
-               (min (1+ (point)) (point-max))
-               'wrap-prefix (propertize " " 'display align-spec))))
+               beginning-of-visual-line
+               end-of-visual-line
+               'before-string
+               (concat "\n" (propertize " " 'display align-spec)))))
       ;; (sit-for 0.5)
 
       ;; Frame width 65
@@ -339,6 +360,22 @@ fallbacks, if needed."
                  (overlay-properties ov))
     (delete-overlay ov)))
 
+(let (( colors
+        (sort (mapcar (lambda (face)
+                        (face-attribute face :foreground))
+                      '(font-lock-string-face
+                        font-lock-keyword-face
+                        font-lock-comment-face
+                        font-lock-variable-name-face
+                        font-lock-function-name-face))
+              (lambda (a b)
+                (zerop (random 2)))))
+      expendable-colors)
+  (defun mb-theme-color-source ()
+    (unless expendable-colors
+      (setq expendable-colors colors))
+    (pop expendable-colors)))
+
 (defun mb-realize-overlay (ov-spec)
   (cl-destructuring-bind
       (start end &rest props)
@@ -347,11 +384,11 @@ fallbacks, if needed."
       (while props (overlay-put ov (pop props) (pop props)))
       ov)))
 
-(cl-defun mb-insert-boxed-text (text &key (border-width 3)
-                                     (horizontal-margins 20)
-                                     (padding 5)
-                                     (border-color "DarkRed")
-                                     (right-align-spec 'right))
+(cl-defun mb-insert-bordered-text (text &key (border-width 3)
+                                        (horizontal-margins 20)
+                                        (padding 5)
+                                        (border-color "DarkRed")
+                                        (right-align-spec 'right))
   (let* (( segment-left-margin
            (lambda (&optional additonal-specs)
              (propertize " "
@@ -424,6 +461,99 @@ fallbacks, if needed."
             (funcall segment-tb-border))
     ))
 
+(cl-defun mb-insert-shadowed-text
+    (text &key (horizontal-margins 20)
+          (padding 5)
+          (border-width 5)
+          (border-color "Blue")
+          (shadow-distance 5)
+          (background-color "DarkRed")
+          (right-align-spec 'right))
+  (let* (( segment-left-margin
+           (lambda (&optional additonal-specs)
+             (propertize " "
+                         'display `(space :align-to (,horizontal-margins)
+                                          ,@additonal-specs))))
+         ( segment-filler
+           (lambda (&optional additonal-specs)
+             (propertize " "
+                         'display `(space :align-to
+                                          (- ,right-align-spec
+                                             (,border-width)
+                                             (,horizontal-margins))
+                                          ,@additonal-specs)
+                         'face `(:background ,background-color))))
+         ( segment-r-shadow
+           (lambda (&optional additonal-specs)
+             (propertize " " 'display `(space :width (,border-width)
+                                              ,@additonal-specs)
+                         'face `(:foreground "Black" :stipple "gray"))))
+         ( segment-lr-padding
+           (lambda ()
+             (propertize " " 'display `(space :width (,padding))
+                         'face `(:background ,background-color))))
+         ( segment-b-shadow
+           (lambda ()
+             (propertize
+              (concat
+               (funcall segment-left-margin `(:height (,border-width)))
+               (propertize " "
+                           'display `(space :align-to
+                                            (- ,right-align-spec
+                                               (,horizontal-margins))
+                                            :height (,shadow-distance)
+                                            :width (,shadow-distance)))
+               (propertize " "
+                           'display `(space :align-to
+                                            (- ,right-align-spec
+                                               (,horizontal-margins))
+                                            :height (,shadow-distance))
+                           'face `(:foreground "Black" :stipple "gray"))
+               (propertize "\n" 'line-height t))
+              ;; 'point-entered 'mb-kick-cursor
+              )))
+         ( segment-tb-padding
+           (lambda ()
+             (propertize
+              (concat
+               (funcall segment-left-margin  `(:height (,padding)))
+               (funcall segment-filler  `(:height (,padding))))
+              ;; 'point-entered 'mb-kick-cursor
+              )))
+         ( segment-line
+           (lambda (text)
+             (concat (propertize
+                      (concat
+                       (funcall segment-left-margin)
+                       (funcall segment-lr-padding))
+                      ;; 'point-entered 'mb-kick-cursor
+                      )
+                     (propertize text
+                                 'wrap-prefix
+                                 (concat (funcall segment-left-margin)
+                                         (funcall segment-r-shadow)
+                                         (funcall segment-lr-padding))
+                                 'face `(:background ,background-color))
+                     (propertize
+                      (concat
+                       (funcall segment-filler)
+                       (funcall segment-r-shadow)
+                       "\n")
+                      ;; 'point-entered 'mb-kick-cursor
+                      )))))
+
+    (insert ;; (funcall segment-b-shadow)
+     (funcall segment-tb-padding)
+     (propertize "\n" 'line-height t))
+    (mapc (lambda (line) (insert (funcall segment-line line)))
+          (split-string text "\n"))
+    (insert (funcall segment-tb-padding)
+            (funcall segment-r-shadow `(:height (,padding)))
+            (propertize "\n" 'line-height t)
+            (funcall segment-b-shadow)
+            )
+    ))
+
 (cl-defun mb--recenter-buffer-vertically (&optional dont-recenter)
   (let* (content-height
          ( window-height (mb-window-inside-pixel-height))
@@ -489,11 +619,23 @@ undo history is important."
     ;; (add-hook 'window-scroll-functions 'mb--recenter-buffer nil t)
     ))
 
+
+(defun mb-clear-window-align-overlays ()
+  (remove-overlays (window-start) (window-end nil t)
+                   'mb-hcenterer-window (selected-window)))
+
+(defun mb-realign-hook ()
+  (mb-clear-window-align-overlays)
+  (goto-char (window-start))
+  (let ((prop))
+    (while (< (point) (window-end nil t))
+      (setq prop (get-text-property mb-hcenterer (point))))))
+
 (define-minor-mode mb-alignment-mode
   "Doc" nil nil nil
   (if mb-alignment-mode
       (progn
-        )))
+        (add-hook))))
 
 ;;; * Helpers ------------------------------------------------------------------
 ;; Utilities that make this presentation possible
@@ -657,24 +799,32 @@ a cutsom stipple example later. They have some re-drawing issues after scrolling
    (info "(elisp) Display Feature Testing"))
   (insert "\n")
   (defface mb-diff-terminal
-    '(( ((type graphic))
-        (:background "DarkRed"))
+    `(( ((type graphic))
+        (:background ,(mb-theme-color-source)
+                     :foreground ,(face-attribute 'default :background)
+                     :weight bold))
 
       ( ((class color)
          (min-colors 88))
-        (:background "blue"))
+        (:background ,(mb-theme-color-source)
+                     :foreground ,(face-attribute 'default :background)
+                     :weight bold))
 
       ( ((class color)
          (min-colors 88))
-        (:background "green"))
+        (:background ,(mb-theme-color-source)
+                     :foreground ,(face-attribute 'default :background)
+                     :weight bold))
 
-      ( t (:background "gray")
+      ( t (:background ,(mb-theme-color-source)
+                       :foreground ,(face-attribute 'default :background)
+                       :weight bold)
           ))
-    "a test face")
+    "A face with different background, depending on type of display")
 
   (mb-insert-filled
-   (propertize "This text will have a different background, depending on \
-   the type of display (Graphical, tty, \"full color\" tty)."
+   (propertize " This text will have a different background, depending on \
+the type of display (Graphical, tty, \"full color\" tty). "
                'face 'mb-diff-terminal))
   (insert "\n"))
 
@@ -684,8 +834,8 @@ a cutsom stipple example later. They have some re-drawing issues after scrolling
   (mb-insert-info-links
    (info "(elisp) Overlay Properties"))
   (insert "\n")
-  (let (( text "This text will have a different background color in each \
-  window it is displayed")
+  (let (( text " This text will have a different background color in each \
+window it is displayed ")
         ( window-list (list 'window-list))
         ( point-a (point))
         point-b)
@@ -700,7 +850,9 @@ a cutsom stipple example later. They have some re-drawing issues after scrolling
                       (overlay-put ov 'window win)
                       (overlay-put ov 'face
                                    `(:background
-                                     ,(mb-random-hex-color))))
+                                     ,(mb-theme-color-source)
+                                     :foreground ,(face-attribute 'default :background)
+                                     :weight bold)))
                     )))
               nil t)))
 
@@ -752,11 +904,12 @@ Cernantur individua ista dicam tua igitur philosophia amicitia numeranda arbitra
   (mb-comment "Will break, should the size of frame's text
 change. If there are line breaks, the lines won't align after a
 window resize. *WIP*")
-  (let* (( paragraphs "Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Sed id ligula quis est convallis tempor.
-Pellentesque dapibus ligula
-Proin neque massa, eget, lacus
-Curabitur vulputate vestibulum lorem")
+  (let* (( paragraphs "Omnino enim quidem concederetur, sapiens qua. Concessum \
+rerum non cum dicta iudiciorumque assecutus cum, nutu feci magnum
+Suscipiet tum, ista et dicenda cum
+Faciendum sine ut litterae sentit autem neque
+Partitio partes ea operosam te, doloris etiam
+De ad, quam, nam laboriosam hoc triarius, qua multo graecis aut")
          start end)
     (mb-subsection "Center"
       (insert "\n")
@@ -822,7 +975,7 @@ Nam vestibulum accumsan nisl."
                                            variable-pitch
                                            :height ,(+ 1.0 (/ (random 10) 10.0))))
               (propertize " " 'display spec)
-              (propertize " " 'face '(:background "red")
+              (propertize " " 'face '(:background "DarkRed")
                           'display '(space :width (3)))
               " More text"
               "\n"))))
@@ -924,14 +1077,21 @@ Quod nisi litteras fieri posuit torquate expetendam cum."
                    'face '(:slant italic :inherit variable-pitch)))
       (insert "\n"))
 
-    (mb-subsection "Boxed paragraph"
+    (mb-subsection "Boxes"
       (mb-comment "Should the contained text exceed the width of the box, gaps
 will appear in the right border.")
       (insert "\n")
-      (mb-insert-boxed-text
+      (mb-insert-bordered-text
        (propertize "Falsi autem ut constituto tarentinis, sapientiam.
 Eoque integris ennius morborum impensa quadam quae apud provocatus, cum."
-                   'face 'variable-pitch)))
+                   'face 'variable-pitch))
+
+      (insert "\n")
+      (mb-insert-shadowed-text
+       (propertize "Plane amicos sed enim, eruditi voluptate honestatis dolemus inermis, athenis.
+Si propemodum consecutus posse operam facillime accurate quae suavitate te.
+Quasi reperiri ad parta quae semper scripta a etiam malum."
+                   'face `(:foreground ,(face-attribute 'default :background) :inherit variable-pitch))))
 
     (mb-subsection "Extra leading"
       (mb-comment "The line-height property only has effect when applied to newline characters.")
@@ -1041,9 +1201,10 @@ to prevent a box from showing around individual slices.")
                                             "sliced images. The technique"
                                             "I'm using is problematic,"
                                             "as the distance between the"
-                                            "lines is noticably larger."
-                                            "There might be a better way"
-                                            "to do it.")
+                                            "lines is noticably larger, and"
+                                            "sometimes gaps may appear between"
+                                            "the images. There might be a"
+                                            "better way to do it.")
                        do (progn
                             (goto-char (line-beginning-position))
                             (when (cl-getf (text-properties-at (point)) 'display)
@@ -1142,7 +1303,68 @@ to prevent a box from showing around individual slices.")
 
 ;; -----------------------------------------------------------------------------
 
-;; (mb-section "Colors")
+;; (mb-section "Colors"
+;;   (mapc (lambda (color)
+;;           (insert (propertize
+;;                    (concat (propertize " "
+;;                                        'display '(space :height (1)))
+;;                            (propertize "\n" 'line-height t))
+;;                    'face `(:background ,color))))
+;;         (apply 'es-color-mixer
+;;                (append (list (face-attribute 'default :background))
+;;                        (make-list 8 nil)
+;;                        (list (face-attribute 'default :foreground))))))
+
+;; -----------------------------------------------------------------------------
+
+(mb-section "Fonts"
+  "One reason people use monospace fonts, it because they are easy to align.
+At least with some fonts (ex. DejaVu Sans Mono), one can also align text
+of different sizes."
+  (let ((point-start (point)))
+    (insert "\n"
+            (mb-colorize-string-chars
+             (propertize "Consequic"
+                         'face `(:height 800
+                                         :foreground ,(face-attribute
+                                                       'default :background)
+                                         :family "DejaVu Sans Mono")))
+            "\n"
+            (mb-colorize-string-chars
+             (propertize "Concedo quid"
+                         'face `(:height 600
+                                         :foreground ,(face-attribute
+                                                       'default :background)
+                                         :family "DejaVu Sans Mono")))
+            "\n"
+            (mb-colorize-string-chars
+             (propertize "Concursio hoc novi"
+                         'face `(:height 400
+                                         :foreground ,(face-attribute
+                                                       'default :background)
+                                         :family "DejaVu Sans Mono")))
+            "\n"
+            (mb-colorize-string-chars
+             (propertize "Non interdictum ego potu"
+                         'face `(:height 300
+                                         :foreground ,(face-attribute
+                                                       'default :background)
+                                         :family "DejaVu Sans Mono")))
+            "\n"
+            (mb-colorize-string-chars
+             (propertize "Ille aperiri quam, expetitur, nos vi"
+                         'face `(:height 200
+                                         :foreground ,(face-attribute
+                                                       'default :background)
+                                         :weight bold :family "DejaVu Sans Mono")))
+            "\n"
+            (mb-colorize-string-chars
+             (propertize "Ferantur individua animo praeclaram detractis non invenerit, uberius nos"
+                         'face `(:height 100
+                                         :foreground ,(face-attribute
+                                                       'default :background)
+                                         :weight bold :family "DejaVu Sans Mono")))
+            "\n")))
 
 ;; -----------------------------------------------------------------------------
 
